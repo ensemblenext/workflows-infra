@@ -1,0 +1,46 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and customize
+
+# AWS Configuration
+aws_region   = "us-west-2"
+environment  = "dev"
+project_name = "workflows"
+
+# EKS Configuration (required for IRSA)
+eks_cluster_name         = "workflows-prod"
+eks_oidc_provider_arn    = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B716D3041E"
+eks_namespace            = "workflows"
+eks_service_account_name = "workflows-sa"
+
+# Feature Flags
+enable_cognito   = true
+enable_scheduler = true
+
+# Cognito URLs
+cognito_callback_urls = [
+  "http://localhost:3000/auth/callback",
+  "https://workflows-us-west-2.example.com/auth/callback"
+]
+cognito_logout_urls = [
+  "http://localhost:3000",
+  "https://workflows-us-west-2.example.com"
+]
+
+# S3 Configuration
+s3_force_destroy                      = false  # Set to true for dev environments
+s3_versioning_enabled                 = true
+s3_noncurrent_version_expiration_days = 90
+
+# ============================================
+# Existing Resources (Optional)
+# ============================================
+# If you have existing S3 buckets or KMS keys, specify them here.
+# Leave empty (default) to create new resources.
+
+# Existing KMS Key
+# existing_kms_key_arn = "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+
+# Existing S3 Buckets
+# existing_user_files_bucket        = "my-existing-user-files-bucket"
+# existing_documents_bucket         = "my-existing-documents-bucket"
+# existing_tenant_migrations_bucket = "my-existing-migrations-bucket"

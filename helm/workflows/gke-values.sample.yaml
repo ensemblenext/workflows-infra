@@ -1,0 +1,117 @@
+# Example values for Google GKE deployment
+# Usage: helm install workflows ./workflows -f gke-values.sample.yaml
+
+# Non-secret environment variables (added to ConfigMap)
+config:
+  # Multi-Cloud Configuration
+  CLOUD_PROVIDER: "gcp"
+  SERVERLESS_ENVIRONMENT: "false"  # k8s uses in-process tasks
+
+  # Storage Configuration (replace with your bucket names)
+  STORAGE_USER_FILES_BUCKET: "my-project-workflows-user-files"
+  STORAGE_DOCUMENTS_BUCKET: "my-project-workflows-documents"
+  STORAGE_TENANT_MIGRATIONS_BUCKET: "my-project-workflows-tenant-migrations"
+
+  # GCP Cloud Scheduler Configuration
+  # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
+  # SCHEDULER_LOCATION: "us-central1"  # GCP region for Cloud Scheduler
+  # Note: GOOGLE_CLOUD_PROJECT is auto-detected via GKE Workload Identity
+
+global:
+  imageRegistry: "us-docker.pkg.dev/my-project/workflows"  # Set to your Artifact Registry
+
+# Ingress - GKE Ingress (GCE) or Gateway API
+ingress:
+  enabled: true
+  className: gce  # Use "nginx" if using nginx-ingress controller
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: workflows-static-ip  # Reserve a static IP first
+    networking.gke.io/managed-certificates: workflows-managed-cert  # For Google-managed SSL
+    kubernetes.io/ingress.allow-http: "false"
+  hosts:
+    - host: app.workflows.example.com  # Replace with your domain
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: server
+        - path: /
+          pathType: Prefix
+          service: web
+  tls:
+    enabled: true
+    secretName: ""  # Leave empty if using Google-managed certificates
+
+# Database - Cloud SQL
+database:
+  external:
+    enabled: true
+    host: "10.0.0.10"  # Set to Cloud SQL private IP or use Cloud SQL Proxy
+    port: 5432
+    database: workflows
+    username: workflows
+    existingSecret: workflows-db-secret  # Create this secret with DATABASE_PASSWORD key
+    sslMode: require
+
+# Service Account with Workload Identity
+serviceAccount:
+  create: true
+  name: workflows-sa
+  annotations:
+    iam.gke.io/gcp-service-account: "workflows-sa@my-project.iam.gserviceaccount.com"
+
+# Secrets - Use Google Secret Manager via External Secrets Operator
+# Or provide directly (not recommended for production)
+secrets:
+  existingSecret: workflows-app-secrets  # Create this secret with all required keys
+
+# Production-ready resource allocations
+server:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+
+web:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 6
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 8
+
+# Node placement - use specific node pools if needed
+nodeSelector: {}
+  # cloud.google.com/gke-nodepool: application-pool
+
+tolerations: []
+
+affinity: {}

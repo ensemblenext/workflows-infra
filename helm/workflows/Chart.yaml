@@ -1,0 +1,17 @@
+apiVersion: v2
+name: workflows
+description: A multi-tenanted platform to build agents and workflows
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - agents
+  - workflows
+  - automation
+home: https://example.com
+sources:
+  - https://github.com/ensembleui/workflows
+maintainers:
+  - name: Ensemble Technologies
+    email: support@ensembleui.com

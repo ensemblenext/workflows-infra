@@ -1,0 +1,20 @@
+{{- if .Values.server.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "workflows.fullname" . }}-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "workflows.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: {{ .Values.server.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "workflows.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+{{- end }}

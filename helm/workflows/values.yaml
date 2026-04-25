@@ -1,0 +1,252 @@
+# Non-secret environment variables (added to ConfigMap)
+config:
+  # Cloud provider: 'gcp' or 'aws'
+  # CLOUD_PROVIDER: "gcp"
+
+  # Environment type: defaults to serverless (Cloud Run, Lambda)
+  # Set to 'false' for k8s to use in-process background tasks
+  SERVERLESS_ENVIRONMENT: "false"
+
+  # ===========================================
+  # Web App Runtime Configuration
+  # ===========================================
+  # These are loaded by the web app at runtime via server components
+  # SERVER_URL: ""  # Backend API URL (e.g., https://api.example.com)
+  # WEB_URL: ""     # Web app public URL (e.g., https://app.example.com)
+  # TEMPORAL_WORKFLOW_URL: ""  # Temporal Cloud UI URL (optional)
+
+  # ===========================================
+  # Auth Configuration
+  # ===========================================
+  # Auth provider: 'firebase' (default) or 'cognito'
+  # AUTH_PROVIDER: "firebase"
+
+  # Firebase settings (when AUTH_PROVIDER=firebase)
+  # FIREBASE_API_KEY: ""
+  # FIREBASE_AUTH_DOMAIN: ""
+  # FIREBASE_PROJECT_ID: ""
+  # FIREBASE_STORAGE_BUCKET: ""
+  # FIREBASE_MESSAGING_SENDER_ID: ""
+  # FIREBASE_APP_ID: ""
+  # FIREBASE_MEASUREMENT_ID: ""
+
+  # AWS Cognito settings (when AUTH_PROVIDER=cognito)
+  # COGNITO_USER_POOL_ID: ""  # e.g., us-east-1_xxxxx
+  # COGNITO_CLIENT_ID: ""
+  # COGNITO_DOMAIN: ""  # e.g., xxxxx.auth.us-east-1.amazoncognito.com
+  # COGNITO_REGION: ""  # defaults to AWS_REGION
+
+  # ===========================================
+  # Scheduler Configuration
+  # ===========================================
+  # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
+
+  # GCP Cloud Scheduler settings (when CLOUD_PROVIDER=gcp)
+  # GOOGLE_CLOUD_PROJECT: ""   # GCP project ID (uses workload identity if not set)
+  # SCHEDULER_LOCATION: "us-central1"  # GCP region for Cloud Scheduler
+
+  # AWS EventBridge Scheduler settings (when CLOUD_PROVIDER=aws)
+  # AWS_REGION: "us-east-1"  # AWS region
+  # SCHEDULER_ROLE_ARN: ""   # IAM role ARN for EventBridge Scheduler
+  # SCHEDULER_GROUP_NAME: "default"  # EventBridge schedule group name
+  # SCHEDULER_API_DESTINATION_ARN: ""  # API Destination ARN for HTTP targets
+
+# Global settings
+global:
+  imageRegistry: ""  # Will be set to Marketplace ECR
+  imagePullSecrets: []
+
+# Database migrations
+migrations:
+  enabled: true  # Set to false to skip migrations during helm upgrade
+
+# License configuration (AWS Marketplace)
+license:
+  enabled: true
+  productCode: ""  # Your Marketplace product code
+
+# Web frontend
+web:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: workflows/web
+    tag: "1.0.0"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 6
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+# API Server
+server:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: workflows/server
+    tag: "1.0.0"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3001
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+# Background Worker
+worker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: workflows/worker
+    tag: "1.0.0"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 8
+    targetCPUUtilization: 60
+    targetMemoryUtilization: 70
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+  hosts:
+    - host: ""  # Set by customer
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: server
+        - path: /
+          pathType: Prefix
+          service: web
+  tls:
+    enabled: true
+    certificateArn: ""  # ACM certificate ARN
+
+# Database configuration
+database:
+  # Option 1: Use external database (recommended)
+  external:
+    enabled: true
+    host: ""
+    port: 5432
+    database: "workflows"
+    username: ""
+    existingSecret: ""  # Secret containing password
+    sslMode: "require"
+
+  # Option 2: Deploy PostgreSQL (for testing only)
+  postgresql:
+    enabled: false
+    auth:
+      postgresPassword: ""
+      database: workflows
+
+# External Secrets Operator integration
+# Use this to sync secrets from external providers (AWS Secrets Manager, Doppler, Vault, etc.)
+externalSecrets:
+  enabled: false
+  # Reference to your pre-existing SecretStore or ClusterSecretStore
+  secretStoreRef:
+    name: ""        # e.g., "aws-secrets-manager", "doppler-store", "vault-backend"
+    kind: SecretStore  # or ClusterSecretStore
+  # The secret key/path in your provider (used with dataFrom.extract)
+  remoteRef: ""     # e.g., "workflows-prod/app-secrets" (AWS), "WORKFLOWS_PROD" (Doppler)
+  refreshInterval: 1h
+  # Optional: Map individual keys instead of extracting all (use instead of remoteRef)
+  # data:
+  #   - secretKey: ANTHROPIC_API_KEY
+  #     remoteRef:
+  #       key: workflows-prod/anthropic
+  #       property: api_key
+
+# Secrets configuration (used when externalSecrets.enabled=false)
+secrets:
+  # AI Provider API Keys
+  anthropicApiKey: ""
+  openaiApiKey: ""
+
+  # Voice/Audio API Keys
+  elevenlabsApiKey: ""
+
+  # Temporal
+  temporalApiKey: ""
+  temporalAddress: ""
+  temporalNamespace: "default"
+
+  # Firebase Auth (server-side - for admin SDK)
+  firebaseProjectId: ""
+  firebasePrivateKey: ""
+  firebaseClientEmail: ""
+
+  # Use existing secret instead of creating new one
+  existingSecret: ""
+
+# Service Account
+serviceAccount:
+  create: true
+  name: "workflows-sa"
+  annotations: {}
+    # For IRSA:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/workflows-prod-workloads-role
+
+# Pod Security
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Namespace
+namespace: workflows
+createNamespace: false  # Set to true if namespace doesn't exist

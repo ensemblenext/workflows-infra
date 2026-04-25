@@ -1,0 +1,168 @@
+# Example values for AWS EKS deployment
+# Usage: helm install workflows ./workflows -f eks-values.yaml
+
+# Non-secret environment variables (added to ConfigMap)
+config:
+  AWS_REGION: "us-west-2"  # Set to your AWS region
+
+  # Multi-Cloud Configuration
+  CLOUD_PROVIDER: "aws"
+  SERVERLESS_ENVIRONMENT: "false"  # k8s uses in-process tasks
+
+  # ===========================================
+  # Web App Runtime Configuration
+  # ===========================================
+  SERVER_URL: "https://yourdomain.com"  # Backend API URL
+  WEB_URL: "https://yourdomain.com"     # Web app public URL
+  TEMPORAL_WORKFLOW_URL: "https://cloud.temporal.io/namespaces/main/workflows"
+
+  # ===========================================
+  # Auth Configuration - choose one:
+  # ===========================================
+
+  # Option 1: AWS Cognito (recommended for AWS)
+  AUTH_PROVIDER: "cognito"
+  COGNITO_USER_POOL_ID: "us-west-2_xxxx"  # From Terraform output
+  COGNITO_CLIENT_ID: "xxxx"  # From Terraform output
+  COGNITO_DOMAIN: "xxxx.auth.us-west-2.amazoncognito.com"  # e.g., xxxxx.auth.us-west-2.amazoncognito.com
+  COGNITO_REGION: "us-west-2"
+
+  # Option 2: Firebase Auth (uncomment if using Firebase)
+  # AUTH_PROVIDER: "firebase"
+  # FIREBASE_API_KEY: ""
+  # FIREBASE_AUTH_DOMAIN: ""
+  # FIREBASE_PROJECT_ID: ""
+  # FIREBASE_STORAGE_BUCKET: ""
+  # FIREBASE_MESSAGING_SENDER_ID: ""
+  # FIREBASE_APP_ID: ""
+  # FIREBASE_MEASUREMENT_ID: ""
+
+  # ===========================================
+  # Storage Configuration (from Terraform outputs)
+  # ===========================================
+  STORAGE_USER_FILES_BUCKET: "example-workflows-user-files"
+  STORAGE_DOCUMENTS_BUCKET: "example-workflows-documents"
+  STORAGE_TENANT_MIGRATIONS_BUCKET: "example-workflows-tenant-migrations"
+
+  # ===========================================
+  # AWS EventBridge Scheduler Configuration
+  # ===========================================
+  # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
+  # SCHEDULER_ROLE_ARN: ""  # IAM role ARN from Terraform output
+  # SCHEDULER_GROUP_NAME: "workflows-prod-schedules"  # From Terraform output
+
+global:
+  imageRegistry: "1234567890.dkr.ecr.us-west-2.amazonaws.com"  # Set to your ECR registry, e.g., 123456789.dkr.ecr.us-west-2.amazonaws.com/
+
+# Ingress - AWS ALB Ingress Controller
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+  hosts:
+    - host: workflows-us-west-2.example.com  # Replace with your domain
+      paths:
+        # Server endpoints
+        - path: /api
+          pathType: Prefix
+          service: server
+        - path: /mcp
+          pathType: Prefix
+          service: server
+        - path: /channel
+          pathType: Prefix
+          service: server
+        # Backward compatibility for external clients
+        - path: /chat
+          pathType: Prefix
+          service: server
+        - path: /workflow
+          pathType: Prefix
+          service: server
+        # Web app (catch-all)
+        - path: /
+          pathType: Prefix
+          service: web
+  tls:
+    enabled: true
+    certificateArn: ""  # Set to your ACM certificate ARN
+
+# Service Account - use the one created by eksctl in Step 7
+serviceAccount:
+  create: false
+  name: workflows-sa
+
+# External Secrets - Sync from AWS Secrets Manager
+# Prerequisites:
+#   1. Install External Secrets Operator: helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace
+#   2. Create a SecretStore named "aws-secrets-manager" in the workflows namespace
+externalSecrets:
+  enabled: true
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  remoteRef: workflows-prod/app-secrets  # Your AWS Secrets Manager secret ID
+  refreshInterval: 1h
+
+# If not using External Secrets, you can create a secret manually and reference it here
+secrets:
+  existingSecret: ""  # Leave empty when using externalSecrets
+
+# POC resource allocations (server biggest, web medium, worker smallest)
+server:
+  image:
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  autoscaling:
+    enabled: false
+
+web:
+  image:
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  autoscaling:
+    enabled: false
+
+worker:
+  image:
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  autoscaling:
+    enabled: false
+
+# Node placement - use specific node groups if needed
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,36 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+
+To verify the deployment, run:
+
+  kubectl get pods -n {{ .Values.namespace }}
+  kubectl get services -n {{ .Values.namespace }}
+  kubectl get ingress -n {{ .Values.namespace }}
+
+{{- if .Values.ingress.enabled }}
+
+Your application will be accessible at:
+{{- range .Values.ingress.hosts }}
+  {{- if .host }}
+  https://{{ .host }}
+  {{- end }}
+{{- end }}
+
+Make sure to:
+1. Configure DNS to point your domain to the ALB/Ingress IP
+2. Ensure your ACM certificate is valid for the domain
+
+{{- end }}
+
+{{- if .Values.database.external.enabled }}
+
+Database Configuration:
+  Host: {{ .Values.database.external.host }}
+  Port: {{ .Values.database.external.port }}
+  Database: {{ .Values.database.external.database }}
+
+Make sure the database password is configured in the secrets.
+{{- end }}
+
+For more information, visit: {{ .Chart.Home }}

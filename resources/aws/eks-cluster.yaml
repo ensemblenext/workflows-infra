@@ -1,0 +1,44 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: workflows-cluster
+  region: us-west-2
+  # version: auto-inherited from control plane when creating nodegroups
+
+iam:
+  withOIDC: true
+
+managedNodeGroups:
+  - name: workers
+    instanceType: t3.large
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 2
+    volumeSize: 80
+    privateNetworking: true  # Route through NAT Gateway for static egress IP
+    # version: matches control plane by default for managed nodegroups
+    ssh:
+      allow: false
+    iam:
+      withAddonPolicies:
+        albIngress: true
+        cloudWatch: true
+        autoScaler: true
+        externalDNS: true
+
+addons:
+  - name: vpc-cni
+    attachPolicyARNs:
+      - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+  - name: coredns
+  - name: kube-proxy
+
+cloudWatch:
+  clusterLogging:
+    enableTypes:
+      - api
+      - audit
+      - authenticator
+      - controllerManager
+      - scheduler

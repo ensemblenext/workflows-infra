@@ -1,0 +1,69 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "workflows.fullname" . }}-migration-{{ .Release.Revision }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "workflows.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    # Run before install and upgrade
+    "helm.sh/hook": pre-install,pre-upgrade
+    # Run before other pre-hooks
+    "helm.sh/hook-weight": "-5"
+    # Keep last 3 successful jobs for debugging, delete failed ones
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  # Don't retry on failure - let Helm handle rollback
+  backoffLimit: 0
+  # Auto-cleanup after 1 hour
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "workflows.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      serviceAccountName: {{ include "workflows.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          workingDir: /project/apps/server
+          command: ["npm", "run", "db:migrate"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "workflows.fullname" . }}-config
+            - secretRef:
+                name: {{ include "workflows.secretsName" . }}
+          env:
+            - name: DATABASE_USER
+              value: {{ .Values.database.external.username | quote }}
+            - name: DATABASE_NAME
+              value: "system"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

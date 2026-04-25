@@ -1,0 +1,41 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+node_modules/
+
+# Misc
+.DS_Store
+*.pem
+
+# Helm
+*.tgz
+**/charts/*.tgz
+**/charts/tmpcharts/
+helm/workflows/*.local.yaml
+
+# Terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfplan
+*.tfvars.local
+prod.tfvars
+dev.tfvars
+staging.tfvars
+.terraformrc
+terraform.rc
+
+# AWS CDK
+aws-cdk/cdk.out/
+aws-cdk/.cdk.staging/
+aws-cdk/**/*.js
+aws-cdk/**/*.d.ts
+aws-cdk/**/*.tsbuildinfo
