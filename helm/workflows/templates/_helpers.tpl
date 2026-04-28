@@ -69,17 +69,6 @@ Get the image registry (removes trailing slash if present, then adds one)
 {{- end }}
 
 {{/*
-Get the secrets name
-*/}}
-{{- define "workflows.secretsName" -}}
-{{- if .Values.secrets.existingSecret }}
-{{- .Values.secrets.existingSecret }}
-{{- else }}
-{{- include "workflows.fullname" . }}-secrets
-{{- end }}
-{{- end }}
-
-{{/*
 Database URL
 */}}
 {{- define "workflows.databaseUrl" -}}

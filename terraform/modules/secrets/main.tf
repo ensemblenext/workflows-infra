@@ -29,15 +29,16 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    ANTHROPIC_API_KEY    = ""
-    OPENAI_API_KEY       = ""
-    TEMPORAL_API_KEY     = ""
-    TEMPORAL_ADDRESS     = ""
-    TEMPORAL_NAMESPACE   = "default"
-    DATABASE_PASSWORD    = ""
-    FIREBASE_PROJECT_ID  = ""
-    FIREBASE_CLIENT_EMAIL = ""
-    FIREBASE_PRIVATE_KEY = ""
+    ANTHROPIC_API_KEY          = ""
+    OPENAI_API_KEY             = ""
+    TEMPORAL_API_KEY           = ""
+    TEMPORAL_ADDRESS           = ""
+    TEMPORAL_NAMESPACE         = "default"
+    SCHEDULER_CALLBACK_API_KEY = ""
+    DATABASE_PASSWORD          = ""
+    FIREBASE_PROJECT_ID        = ""
+    FIREBASE_CLIENT_EMAIL      = ""
+    FIREBASE_PRIVATE_KEY       = ""
   })
 
   lifecycle {

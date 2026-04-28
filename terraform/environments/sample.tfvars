@@ -14,6 +14,12 @@ eks_service_account_name = "workflows-sa"
 enable_cognito   = true
 enable_scheduler = true
 
+# EventBridge Scheduler callback delivery
+scheduler_api_destination_endpoint      = "https://workflows-dev.example.com/api/scheduler/callback"
+scheduler_api_destination_auth_type     = "API_KEY"
+scheduler_api_destination_api_key_name  = "x-api-key"
+scheduler_api_destination_api_key_value = "replace-with-a-strong-shared-secret"
+
 # Cognito URLs
 cognito_callback_urls = [
   "http://localhost:3000/auth/callback"

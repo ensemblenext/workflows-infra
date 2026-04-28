@@ -40,11 +40,10 @@ spec:
             - name: http
               containerPort: {{ .Values.server.service.targetPort }}
               protocol: TCP
+          {{- with .Values.server.envFrom }}
           envFrom:
-            - configMapRef:
-                name: {{ include "workflows.fullname" . }}-config
-            - secretRef:
-                name: {{ include "workflows.secretsName" . }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: PORT
               value: {{ .Values.server.service.targetPort | quote }}
@@ -68,18 +67,28 @@ spec:
             failureThreshold: 3
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: npm-cache
+              mountPath: /home/node/.npm
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -90,4 +99,5 @@ spec:
                     {{- include "workflows.selectorLabels" . | nindent 20 }}
                     app.kubernetes.io/component: server
                 topologyKey: kubernetes.io/hostname
+      {{- end }}
 {{- end }}

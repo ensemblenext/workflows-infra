@@ -36,20 +36,10 @@ spec:
         - name: worker
           image: "{{ include "workflows.imageRegistry" . }}{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          {{- with .Values.worker.envFrom }}
           envFrom:
-            - configMapRef:
-                name: {{ include "workflows.fullname" . }}-config
-            - secretRef:
-                name: {{ include "workflows.secretsName" . }}
-          env:
-            {{- if .Values.secrets.temporalAddress }}
-            - name: TEMPORAL_ADDRESS
-              value: {{ .Values.secrets.temporalAddress | quote }}
-            {{- end }}
-            {{- if .Values.secrets.temporalNamespace }}
-            - name: TEMPORAL_NAMESPACE
-              value: {{ .Values.secrets.temporalNamespace | quote }}
-            {{- end }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           readinessProbe:
@@ -74,6 +64,16 @@ spec:
             failureThreshold: 3
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: npm-cache
+              mountPath: /home/node/.npm
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -82,6 +82,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -92,4 +96,5 @@ spec:
                     {{- include "workflows.selectorLabels" . | nindent 20 }}
                     app.kubernetes.io/component: worker
                 topologyKey: kubernetes.io/hostname
+      {{- end }}
 {{- end }}

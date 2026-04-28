@@ -1,11 +1,17 @@
-# Non-secret environment variables (added to ConfigMap)
+# ConfigMap configuration
+# Optional: Set to true only if you need non-secret environment variables
+# that aren't provided through secrets (e.g., External Secrets)
+configMap:
+  enabled: false
+
+# Non-secret environment variables (added to ConfigMap when configMap.enabled=true)
 config:
   # Cloud provider: 'gcp' or 'aws'
   # CLOUD_PROVIDER: "gcp"
 
   # Environment type: defaults to serverless (Cloud Run, Lambda)
   # Set to 'false' for k8s to use in-process background tasks
-  SERVERLESS_ENVIRONMENT: "false"
+  # SERVERLESS_ENVIRONMENT: "false"
 
   # ===========================================
   # Web App Runtime Configuration
@@ -49,7 +55,13 @@ config:
   # AWS_REGION: "us-east-1"  # AWS region
   # SCHEDULER_ROLE_ARN: ""   # IAM role ARN for EventBridge Scheduler
   # SCHEDULER_GROUP_NAME: "default"  # EventBridge schedule group name
-  # SCHEDULER_API_DESTINATION_ARN: ""  # API Destination ARN for HTTP targets
+  # SCHEDULER_TARGET_ARN: ""  # EventBridge event bus ARN to use as the schedule target
+  # SCHEDULER_EVENT_BUS_NAME: ""  # EventBridge event bus name for scheduled callback events
+  # SCHEDULER_EVENT_SOURCE: "workflows.scheduler"  # Must match Terraform scheduler_event_source
+  # SCHEDULER_EVENT_DETAIL_TYPE: "ScheduledWorkflow"  # Must match Terraform scheduler_event_detail_type
+  # SCHEDULER_API_DESTINATION_ARN: ""  # Terraform-created API Destination ARN for reference/debugging
+  # Scheduler callback auth is configured in Terraform's EventBridge Connection.
+  # If using API_KEY auth, set SCHEDULER_CALLBACK_API_KEY in the server secrets.
 
 # Global settings
 global:
@@ -59,6 +71,7 @@ global:
 # Database migrations
 migrations:
   enabled: true  # Set to false to skip migrations during helm upgrade
+  activeDeadlineSeconds: 600  # Maximum time for migration to complete (10 minutes)
 
 # License configuration (AWS Marketplace)
 license:
@@ -68,6 +81,12 @@ license:
 # Web frontend
 web:
   enabled: true
+  # envFrom sources for web pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
+  envFrom: []
+    # - secretRef:
+    #     name: workflows-web-secrets
+    # - configMapRef:
+    #     name: workflows-web-config
   replicaCount: 1
   image:
     repository: workflows/web
@@ -90,10 +109,35 @@ web:
     maxReplicas: 6
     targetCPUUtilization: 70
     targetMemoryUtilization: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+          - type: Pods
+            value: 4
+            periodSeconds: 15
+        selectPolicy: Max
+  pdb:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1  # Alternative to minAvailable
 
 # API Server
 server:
   enabled: true
+  # envFrom sources for server pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
+  envFrom: []
+    # - secretRef:
+    #     name: workflows-backend-secrets
   replicaCount: 1
   image:
     repository: workflows/server
@@ -116,10 +160,35 @@ server:
     maxReplicas: 10
     targetCPUUtilization: 70
     targetMemoryUtilization: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+          - type: Pods
+            value: 4
+            periodSeconds: 15
+        selectPolicy: Max
+  pdb:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1  # Alternative to minAvailable
 
 # Background Worker
 worker:
   enabled: true
+  # envFrom sources for worker pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
+  envFrom: []
+    # - secretRef:
+    #     name: workflows-backend-secrets
   replicaCount: 1
   image:
     repository: workflows/worker
@@ -136,8 +205,53 @@ worker:
     enabled: true
     minReplicas: 1
     maxReplicas: 8
+    # CPU/memory not ideal for Temporal workers - use custom metrics instead
+    # Fallback to CPU if no custom metrics configured (HPA requires at least one metric)
     targetCPUUtilization: 60
-    targetMemoryUtilization: 70
+    # targetMemoryUtilization: 70
+    # Custom metrics (e.g., Temporal queue depth) - requires metrics adapter
+    # When 'metrics' is set, targetCPUUtilization/targetMemoryUtilization are ignored
+    metrics: []
+      # Example: Scale on Temporal workflow task queue backlog
+      # - type: External
+      #   external:
+      #     metric:
+      #       name: temporal_workflow_task_schedule_to_start_latency
+      #       selector:
+      #         matchLabels:
+      #           task_queue: your-task-queue
+      #     target:
+      #       type: AverageValue
+      #       averageValue: "5"
+      # Example: Scale on Prometheus metric via prometheus-adapter
+      # - type: External
+      #   external:
+      #     metric:
+      #       name: temporal_task_queue_backlog
+      #     target:
+      #       type: AverageValue
+      #       averageValue: "100"
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+          - type: Pods
+            value: 4
+            periodSeconds: 15
+        selectPolicy: Max
+  pdb:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1  # Alternative to minAvailable
 
 # Ingress configuration
 ingress:
@@ -197,28 +311,36 @@ externalSecrets:
   #     remoteRef:
   #       key: workflows-prod/anthropic
   #       property: api_key
+  #   - secretKey: SCHEDULER_CALLBACK_API_KEY
+  #     remoteRef:
+  #       key: workflows-prod/scheduler
+  #       property: api_key
 
-# Secrets configuration (used when externalSecrets.enabled=false)
+# Secrets configuration
+# Optional: Create secrets directly in the chart (disabled by default)
+# Use external secret managers (Doppler Operator, External Secrets Operator, etc.) instead
 secrets:
+  create: false  # Set to true to create secrets from values below
+
   # AI Provider API Keys
-  anthropicApiKey: ""
-  openaiApiKey: ""
+  # anthropicApiKey: ""
+  # openaiApiKey: ""
 
   # Voice/Audio API Keys
-  elevenlabsApiKey: ""
+  # elevenlabsApiKey: ""
 
   # Temporal
-  temporalApiKey: ""
-  temporalAddress: ""
-  temporalNamespace: "default"
+  # temporalApiKey: ""
+  # temporalAddress: ""
+  # temporalNamespace: "default"
+
+  # Scheduler callback authentication
+  # schedulerCallbackApiKey: ""  # Should match scheduler_api_destination_api_key_value in Terraform when using API_KEY auth
 
   # Firebase Auth (server-side - for admin SDK)
-  firebaseProjectId: ""
-  firebasePrivateKey: ""
-  firebaseClientEmail: ""
-
-  # Use existing secret instead of creating new one
-  existingSecret: ""
+  # firebaseProjectId: ""
+  # firebasePrivateKey: ""
+  # firebaseClientEmail: ""
 
 # Service Account
 serviceAccount:
@@ -236,7 +358,10 @@ podSecurityContext:
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # Node selector
 nodeSelector: {}

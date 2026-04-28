@@ -1,0 +1,68 @@
+{{- if and .Values.server.enabled .Values.server.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "workflows.fullname" . }}-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "workflows.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  {{- if .Values.server.pdb.minAvailable }}
+  minAvailable: {{ .Values.server.pdb.minAvailable }}
+  {{- else if .Values.server.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.server.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "workflows.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+{{- end }}
+---
+{{- if and .Values.web.enabled .Values.web.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "workflows.fullname" . }}-web
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "workflows.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  {{- if .Values.web.pdb.minAvailable }}
+  minAvailable: {{ .Values.web.pdb.minAvailable }}
+  {{- else if .Values.web.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.web.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "workflows.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+{{- end }}
+---
+{{- if and .Values.worker.enabled .Values.worker.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "workflows.fullname" . }}-worker
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "workflows.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  {{- if .Values.worker.pdb.minAvailable }}
+  minAvailable: {{ .Values.worker.pdb.minAvailable }}
+  {{- else if .Values.worker.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.worker.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "workflows.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+{{- end }}

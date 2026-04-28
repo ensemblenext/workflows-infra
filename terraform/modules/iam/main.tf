@@ -79,6 +79,11 @@ variable "tags" {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  scheduler_schedule_group_arn = "arn:aws:scheduler:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:schedule-group/${var.name_prefix}-schedules"
+  scheduler_event_bus_arn      = "arn:aws:events:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:event-bus/${var.name_prefix}-scheduler-events"
+}
+
 # ============================================
 # Scheduler Role
 # ============================================
@@ -115,10 +120,15 @@ resource "aws_iam_role_policy" "scheduler" {
         Effect = "Allow"
         Action = [
           "lambda:InvokeFunction",
-          "states:StartExecution",
-          "events:PutEvents"
+          "states:StartExecution"
         ]
         Resource = "*"
+      },
+      {
+        Sid      = "PutScheduledEvents"
+        Effect   = "Allow"
+        Action   = "events:PutEvents"
+        Resource = local.scheduler_event_bus_arn
       }
     ]
   })
@@ -147,7 +157,7 @@ resource "aws_iam_role" "workloads" {
         }
       }
     ]
-  }) : jsonencode({
+    }) : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -236,8 +246,7 @@ resource "aws_iam_role_policy" "workloads_scheduler" {
           "scheduler:CreateSchedule",
           "scheduler:GetSchedule",
           "scheduler:UpdateSchedule",
-          "scheduler:DeleteSchedule",
-          "scheduler:ListSchedules"
+          "scheduler:DeleteSchedule"
         ]
         Resource = [
           "arn:aws:scheduler:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:schedule/${var.name_prefix}-schedules/*",
@@ -245,9 +254,24 @@ resource "aws_iam_role_policy" "workloads_scheduler" {
         ]
       },
       {
-        Sid    = "PassSchedulerRole"
+        Sid      = "SchedulerGroupRead"
+        Effect   = "Allow"
+        Action   = "scheduler:GetScheduleGroup"
+        Resource = local.scheduler_schedule_group_arn
+      },
+      {
+        Sid    = "SchedulerList"
         Effect = "Allow"
-        Action = "iam:PassRole"
+        Action = [
+          "scheduler:ListSchedules",
+          "scheduler:ListScheduleGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid      = "PassSchedulerRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
         Resource = aws_iam_role.scheduler.arn
         Condition = {
           StringEquals = {

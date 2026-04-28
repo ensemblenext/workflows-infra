@@ -57,12 +57,12 @@ module "iam" {
   eks_service_account_name = var.eks_service_account_name
 
   # Resource ARNs for permissions
-  kms_key_arn                   = module.kms.key_arn
-  user_files_bucket_arn         = module.s3.user_files_bucket_arn
-  documents_bucket_arn          = module.s3.documents_bucket_arn
-  tenant_migrations_bucket_arn  = module.s3.tenant_migrations_bucket_arn
-  cognito_user_pool_arn         = var.enable_cognito ? module.cognito[0].user_pool_arn : ""
-  secrets_arn_prefix            = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${local.name_prefix}/*"
+  kms_key_arn                  = module.kms.key_arn
+  user_files_bucket_arn        = module.s3.user_files_bucket_arn
+  documents_bucket_arn         = module.s3.documents_bucket_arn
+  tenant_migrations_bucket_arn = module.s3.tenant_migrations_bucket_arn
+  cognito_user_pool_arn        = var.enable_cognito ? module.cognito[0].user_pool_arn : ""
+  secrets_arn_prefix           = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${local.name_prefix}/*"
 
   enable_scheduler = var.enable_scheduler
   enable_cognito   = var.enable_cognito
@@ -77,9 +77,26 @@ module "scheduler" {
   source = "./modules/scheduler"
   count  = var.enable_scheduler ? 1 : 0
 
-  name_prefix    = local.name_prefix
+  name_prefix        = local.name_prefix
   scheduler_role_arn = module.iam.scheduler_role_arn
-  tags           = local.common_tags
+
+  api_destination_endpoint                         = var.scheduler_api_destination_endpoint
+  api_destination_http_method                      = var.scheduler_api_destination_http_method
+  api_destination_invocation_rate_limit_per_second = var.scheduler_api_destination_invocation_rate_limit_per_second
+  api_destination_auth_type                        = var.scheduler_api_destination_auth_type
+  api_destination_api_key_name                     = var.scheduler_api_destination_api_key_name
+  api_destination_api_key_value                    = var.scheduler_api_destination_api_key_value
+  api_destination_basic_username                   = var.scheduler_api_destination_basic_username
+  api_destination_basic_password                   = var.scheduler_api_destination_basic_password
+  api_destination_oauth_authorization_endpoint     = var.scheduler_api_destination_oauth_authorization_endpoint
+  api_destination_oauth_http_method                = var.scheduler_api_destination_oauth_http_method
+  api_destination_oauth_client_id                  = var.scheduler_api_destination_oauth_client_id
+  api_destination_oauth_client_secret              = var.scheduler_api_destination_oauth_client_secret
+  api_destination_oauth_http_parameters            = var.scheduler_api_destination_oauth_http_parameters
+  event_source                                     = var.scheduler_event_source
+  event_detail_type                                = var.scheduler_event_detail_type
+
+  tags = local.common_tags
 }
 
 # ============================================
@@ -89,10 +106,10 @@ module "cognito" {
   source = "./modules/cognito"
   count  = var.enable_cognito ? 1 : 0
 
-  name_prefix    = local.name_prefix
-  callback_urls  = var.cognito_callback_urls
-  logout_urls    = var.cognito_logout_urls
-  tags           = local.common_tags
+  name_prefix   = local.name_prefix
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_logout_urls
+  tags          = local.common_tags
 }
 
 # ============================================

@@ -16,6 +16,35 @@ eks_service_account_name = "workflows-sa"
 enable_cognito   = true
 enable_scheduler = true
 
+# EventBridge Scheduler callback delivery
+# The app creates/updates/deletes schedules in the scheduler group.
+# Each schedule should target the EventBridge event bus output by Terraform;
+# EventBridge then invokes this HTTPS API destination with the configured credentials.
+scheduler_api_destination_endpoint      = "https://workflows-us-west-2.example.com/api/scheduler/callback"
+scheduler_api_destination_http_method   = "POST"
+scheduler_api_destination_auth_type     = "API_KEY"
+scheduler_api_destination_api_key_name  = "x-api-key"
+scheduler_api_destination_api_key_value = "replace-with-a-strong-shared-secret"
+# For basic auth instead:
+# scheduler_api_destination_auth_type      = "BASIC"
+# scheduler_api_destination_basic_username = "scheduler"
+# scheduler_api_destination_basic_password = "replace-with-a-strong-password"
+# For OAuth client credentials instead:
+# scheduler_api_destination_auth_type                    = "OAUTH_CLIENT_CREDENTIALS"
+# scheduler_api_destination_oauth_authorization_endpoint = "https://auth.example.com/oauth2/token"
+# scheduler_api_destination_oauth_http_method            = "POST"
+# scheduler_api_destination_oauth_client_id              = "workflows-scheduler"
+# scheduler_api_destination_oauth_client_secret          = "replace-with-client-secret"
+# scheduler_api_destination_oauth_http_parameters = {
+#   body = [
+#     {
+#       key   = "grant_type"
+#       value = "client_credentials"
+#     }
+#     # Add a scope parameter here if your authorization server requires it.
+#   ]
+# }
+
 # Cognito URLs
 cognito_callback_urls = [
   "http://localhost:3000/auth/callback",

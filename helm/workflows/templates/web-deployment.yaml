@@ -25,6 +25,7 @@ spec:
         app.kubernetes.io/component: web
     spec:
       serviceAccountName: {{ include "workflows.serviceAccountName" . }}
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.global.imagePullSecrets }}
@@ -39,9 +40,10 @@ spec:
             - name: http
               containerPort: {{ .Values.web.service.targetPort }}
               protocol: TCP
+          {{- with .Values.web.envFrom }}
           envFrom:
-            - configMapRef:
-                name: {{ include "workflows.fullname" . }}-config
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: PORT
               value: {{ .Values.web.service.targetPort | quote }}
@@ -49,7 +51,7 @@ spec:
             {{- toYaml .Values.web.resources | nindent 12 }}
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: {{ .Values.web.service.targetPort }}
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -57,7 +59,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: {{ .Values.web.service.targetPort }}
             initialDelaySeconds: 30
             periodSeconds: 30
@@ -65,6 +67,16 @@ spec:
             failureThreshold: 3
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: npm-cache
+              mountPath: /home/node/.npm
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -73,6 +85,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -83,4 +99,5 @@ spec:
                     {{- include "workflows.selectorLabels" . | nindent 20 }}
                     app.kubernetes.io/component: web
                 topologyKey: kubernetes.io/hostname
+      {{- end }}
 {{- end }}

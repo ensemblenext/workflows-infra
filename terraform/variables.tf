@@ -54,6 +54,118 @@ variable "enable_scheduler" {
   default     = true
 }
 
+# EventBridge Scheduler callback delivery
+variable "scheduler_api_destination_endpoint" {
+  description = "HTTPS API endpoint invoked when scheduled events fire. Leave empty to create only the schedule group/event bus."
+  type        = string
+  default     = ""
+}
+
+variable "scheduler_api_destination_http_method" {
+  description = "HTTP method used for scheduled API callbacks"
+  type        = string
+  default     = "POST"
+}
+
+variable "scheduler_api_destination_invocation_rate_limit_per_second" {
+  description = "Maximum invocations per second for scheduled API callbacks"
+  type        = number
+  default     = 50
+}
+
+variable "scheduler_api_destination_auth_type" {
+  description = "Authorization type for scheduled API callbacks. Supported values: API_KEY, BASIC, OAUTH_CLIENT_CREDENTIALS."
+  type        = string
+  default     = "API_KEY"
+}
+
+variable "scheduler_api_destination_api_key_name" {
+  description = "API key header name for scheduled API callbacks"
+  type        = string
+  default     = "x-api-key"
+}
+
+variable "scheduler_api_destination_api_key_value" {
+  description = "API key value for scheduled API callbacks"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "scheduler_api_destination_basic_username" {
+  description = "Basic auth username for scheduled API callbacks"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "scheduler_api_destination_basic_password" {
+  description = "Basic auth password for scheduled API callbacks"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "scheduler_api_destination_oauth_authorization_endpoint" {
+  description = "OAuth token endpoint for scheduled API callbacks"
+  type        = string
+  default     = ""
+}
+
+variable "scheduler_api_destination_oauth_http_method" {
+  description = "HTTP method used for the OAuth token request"
+  type        = string
+  default     = "POST"
+}
+
+variable "scheduler_api_destination_oauth_client_id" {
+  description = "OAuth client ID for scheduled API callbacks"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "scheduler_api_destination_oauth_client_secret" {
+  description = "OAuth client secret for scheduled API callbacks"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "scheduler_api_destination_oauth_http_parameters" {
+  description = "Optional OAuth token request parameters for scheduled API callbacks"
+  type = object({
+    body = optional(list(object({
+      key             = string
+      value           = string
+      is_value_secret = optional(bool, false)
+    })), [])
+    header = optional(list(object({
+      key             = string
+      value           = string
+      is_value_secret = optional(bool, false)
+    })), [])
+    query_string = optional(list(object({
+      key             = string
+      value           = string
+      is_value_secret = optional(bool, false)
+    })), [])
+  })
+  default = {}
+}
+
+variable "scheduler_event_source" {
+  description = "EventBridge source value for scheduled callback events"
+  type        = string
+  default     = "workflows.scheduler"
+}
+
+variable "scheduler_event_detail_type" {
+  description = "EventBridge detail-type value for scheduled callback events"
+  type        = string
+  default     = "ScheduledWorkflow"
+}
+
 # Cognito Configuration
 variable "cognito_callback_urls" {
   description = "Allowed callback URLs for Cognito"

@@ -50,6 +50,11 @@ config:
   # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
   # SCHEDULER_ROLE_ARN: ""  # IAM role ARN from Terraform output
   # SCHEDULER_GROUP_NAME: "workflows-prod-schedules"  # From Terraform output
+  # SCHEDULER_TARGET_ARN: ""  # EventBridge event bus ARN from Terraform output
+  # SCHEDULER_EVENT_BUS_NAME: "workflows-prod-scheduler-events"  # From Terraform output
+  # SCHEDULER_EVENT_SOURCE: "workflows.scheduler"  # Must match Terraform scheduler_event_source
+  # SCHEDULER_EVENT_DETAIL_TYPE: "ScheduledWorkflow"  # Must match Terraform scheduler_event_detail_type
+  # SCHEDULER_API_DESTINATION_ARN: ""  # API Destination ARN from Terraform output
 
 global:
   imageRegistry: "1234567890.dkr.ecr.us-west-2.amazonaws.com"  # Set to your ECR registry, e.g., 123456789.dkr.ecr.us-west-2.amazonaws.com/

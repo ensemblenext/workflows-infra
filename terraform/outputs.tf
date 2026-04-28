@@ -70,6 +70,21 @@ output "scheduler_group_name" {
   value       = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
 }
 
+output "scheduler_event_bus_name" {
+  description = "EventBridge event bus name used as the schedule target"
+  value       = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
+}
+
+output "scheduler_event_bus_arn" {
+  description = "EventBridge event bus ARN used as the schedule target"
+  value       = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
+}
+
+output "scheduler_api_destination_arn" {
+  description = "EventBridge API Destination ARN for scheduled API callbacks"
+  value       = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
+}
+
 # ============================================
 # Cognito Outputs
 # ============================================
@@ -121,6 +136,12 @@ output "helm_config_values" {
     KMS_KEY_ARN                      = module.kms.key_arn
     SCHEDULER_ROLE_ARN               = module.iam.scheduler_role_arn
     SCHEDULER_GROUP_NAME             = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
+    SCHEDULER_TARGET_ARN             = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
+    SCHEDULER_EVENT_BUS_NAME         = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
+    SCHEDULER_EVENT_SOURCE           = var.enable_scheduler ? module.scheduler[0].scheduler_event_source : ""
+    SCHEDULER_EVENT_DETAIL_TYPE      = var.enable_scheduler ? module.scheduler[0].scheduler_event_detail_type : ""
+    SCHEDULER_API_DESTINATION_ARN    = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
+    SCHEDULER_SERVICE_URL            = var.scheduler_api_destination_endpoint
     AUTH_PROVIDER                    = var.enable_cognito ? "cognito" : "firebase"
     COGNITO_USER_POOL_ID             = var.enable_cognito ? module.cognito[0].user_pool_id : ""
     COGNITO_REGION                   = data.aws_region.current.name

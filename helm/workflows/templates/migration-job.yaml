@@ -17,6 +17,8 @@ metadata:
 spec:
   # Don't retry on failure - let Helm handle rollback
   backoffLimit: 0
+  # Maximum time for migration to complete (default: 10 minutes)
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds | default 600 }}
   # Auto-cleanup after 1 hour
   ttlSecondsAfterFinished: 3600
   template:
@@ -39,16 +41,10 @@ spec:
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           workingDir: /project/apps/server
           command: ["npm", "run", "db:migrate"]
+          {{- with .Values.server.envFrom }}
           envFrom:
-            - configMapRef:
-                name: {{ include "workflows.fullname" . }}-config
-            - secretRef:
-                name: {{ include "workflows.secretsName" . }}
-          env:
-            - name: DATABASE_USER
-              value: {{ .Values.database.external.username | quote }}
-            - name: DATABASE_NAME
-              value: "system"
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             requests:
               memory: "256Mi"
@@ -58,6 +54,16 @@ spec:
               cpu: "500m"
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: npm-cache
+              mountPath: /home/node/.npm
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
