@@ -11,6 +11,8 @@ node_modules/
 **/charts/*.tgz
 **/charts/tmpcharts/
 helm/workflows/*.local.yaml
+helm/workflows/eks-values.yaml
+helm/workflows/gke-values.yaml
 
 # Terraform
 .terraform/

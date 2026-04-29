@@ -50,7 +50,7 @@ helm install workflows . -f your-values.yaml
 ## Required Secret Keys
 
 Your external secret should contain these keys:
-- `DATABASE_URL`
+- `PG_BASE_URL`
 - `TEMPORAL_API_KEY`
 - `ELEVENLABS_API_KEY`
 - `OPENAI_API_KEY`

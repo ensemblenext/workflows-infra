@@ -287,7 +287,7 @@ aws secretsmanager put-secret-value \
     "OPENAI_API_KEY": "sk-xxx",
     "TEMPORAL_API_KEY": "xxx",
     "TEMPORAL_ADDRESS": "xxx.tmprl.cloud:7233",
-    "DATABASE_PASSWORD": "xxx"
+    "PG_BASE_URL": "postgresql://user:pass@host:5432"
   }'
 ```
 
