@@ -47,19 +47,19 @@ helm install workflows . -f your-values.yaml
 | Doppler | `doppler-store` | `WORKFLOWS_PROD` (project name) |
 | HashiCorp Vault | `vault-backend` | `secret/data/workflows/prod` |
 
-## Required Secret Keys
+## Secret Keys
 
-Your external secret should contain these keys:
-- `PG_BASE_URL`
-- `TEMPORAL_API_KEY`
-- `ELEVENLABS_API_KEY`
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `CEREBRAS_API_KEY`
-- `MOONSHOTAI_API_KEY`
-- `ZHIPU_API_KEY`
-- `NEON_API_KEY`
-- `NEON_BRANCH`
-- `NEON_OWNER_NAME`
-- `NEON_PROJECT`
-- `RESEND_API_KEY`
+See `references/server-variables.yaml` for the full list of secrets.
+
+**Required:**
+- `PG_BASE_URL` - PostgreSQL connection string (without database name)
+- `TEMPORAL_API_KEY` - Temporal Cloud API key
+
+**Optional:**
+- `SYSTEM_DB_NAME` - Database name (defaults to "system")
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY` - LLM providers
+- `ELEVENLABS_API_KEY` - Text-to-speech
+- `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` - Slack integration
+- `TWILIO_*` - Twilio integration
+- `NEON_*` - Neon database
+- `RESEND_API_KEY`, `SENDGRID_API_KEY` - Email services

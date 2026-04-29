@@ -276,20 +276,27 @@ serviceAccount:
 
 ## Secrets Setup
 
-After deployment, update the Secrets Manager secret with actual values:
+After deployment, update the Secrets Manager secret with actual values.
+
+See `helm/workflows/references/server-variables.yaml` for the full list of secrets.
 
 ```bash
 aws secretsmanager put-secret-value \
   --profile ensemble \
   --secret-id workflows-prod/app-secrets \
   --secret-string '{
-    "ANTHROPIC_API_KEY": "sk-ant-xxx",
-    "OPENAI_API_KEY": "sk-xxx",
+    "PG_BASE_URL": "postgresql://user:pass@host:5432",
     "TEMPORAL_API_KEY": "xxx",
-    "TEMPORAL_ADDRESS": "xxx.tmprl.cloud:7233",
-    "PG_BASE_URL": "postgresql://user:pass@host:5432"
+    "OPENAI_API_KEY": "sk-xxx",
+    "ANTHROPIC_API_KEY": "sk-ant-xxx"
   }'
 ```
+
+**Required secrets:**
+- `PG_BASE_URL` - PostgreSQL connection string (without database name)
+- `TEMPORAL_API_KEY` - Temporal Cloud API key
+
+**Optional secrets:** `SYSTEM_DB_NAME`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, and more (see references).
 
 ## IRSA Setup
 

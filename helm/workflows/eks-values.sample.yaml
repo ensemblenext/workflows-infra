@@ -1,63 +1,10 @@
 # Example values for AWS EKS deployment
 # Usage: helm install workflows ./workflows -f eks-values.yaml
-
-# Non-secret environment variables (added to ConfigMap)
-config:
-  AWS_REGION: "us-west-2"  # Set to your AWS region
-
-  # Multi-Cloud Configuration
-  CLOUD_PROVIDER: "aws"
-  SERVERLESS_ENVIRONMENT: "false"  # k8s uses in-process tasks
-
-  # ===========================================
-  # Web App Runtime Configuration
-  # ===========================================
-  SERVER_URL: "https://yourdomain.com"  # Backend API URL
-  WEB_URL: "https://yourdomain.com"     # Web app public URL
-  TEMPORAL_WORKFLOW_URL: "https://cloud.temporal.io/namespaces/main/workflows"
-
-  # ===========================================
-  # Auth Configuration - choose one:
-  # ===========================================
-
-  # Option 1: AWS Cognito (recommended for AWS)
-  AUTH_PROVIDER: "cognito"
-  COGNITO_USER_POOL_ID: "us-west-2_xxxx"  # From Terraform output
-  COGNITO_CLIENT_ID: "xxxx"  # From Terraform output
-  COGNITO_DOMAIN: "xxxx.auth.us-west-2.amazoncognito.com"  # e.g., xxxxx.auth.us-west-2.amazoncognito.com
-  COGNITO_REGION: "us-west-2"
-
-  # Option 2: Firebase Auth (uncomment if using Firebase)
-  # AUTH_PROVIDER: "firebase"
-  # FIREBASE_API_KEY: ""
-  # FIREBASE_AUTH_DOMAIN: ""
-  # FIREBASE_PROJECT_ID: ""
-  # FIREBASE_STORAGE_BUCKET: ""
-  # FIREBASE_MESSAGING_SENDER_ID: ""
-  # FIREBASE_APP_ID: ""
-  # FIREBASE_MEASUREMENT_ID: ""
-
-  # ===========================================
-  # Storage Configuration (from Terraform outputs)
-  # ===========================================
-  STORAGE_USER_FILES_BUCKET: "example-workflows-user-files"
-  STORAGE_DOCUMENTS_BUCKET: "example-workflows-documents"
-  STORAGE_TENANT_MIGRATIONS_BUCKET: "example-workflows-tenant-migrations"
-
-  # ===========================================
-  # AWS EventBridge Scheduler Configuration
-  # ===========================================
-  # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
-  # SCHEDULER_ROLE_ARN: ""  # IAM role ARN from Terraform output
-  # SCHEDULER_GROUP_NAME: "workflows-prod-schedules"  # From Terraform output
-  # SCHEDULER_TARGET_ARN: ""  # EventBridge event bus ARN from Terraform output
-  # SCHEDULER_EVENT_BUS_NAME: "workflows-prod-scheduler-events"  # From Terraform output
-  # SCHEDULER_EVENT_SOURCE: "workflows.scheduler"  # Must match Terraform scheduler_event_source
-  # SCHEDULER_EVENT_DETAIL_TYPE: "ScheduledWorkflow"  # Must match Terraform scheduler_event_detail_type
-  # SCHEDULER_API_DESTINATION_ARN: ""  # API Destination ARN from Terraform output
+#
+# See helm/workflows/references/ for full list of environment variables and secrets
 
 global:
-  imageRegistry: "1234567890.dkr.ecr.us-west-2.amazonaws.com"  # Set to your ECR registry, e.g., 123456789.dkr.ecr.us-west-2.amazonaws.com/
+  imageRegistry: "123456789.dkr.ecr.us-west-2.amazonaws.com"  # Your ECR registry
 
 # Ingress - AWS ALB Ingress Controller
 ingress:
@@ -122,7 +69,9 @@ externalSecrets:
 secrets:
   existingSecret: ""  # Leave empty when using externalSecrets
 
-# POC resource allocations (server biggest, web medium, worker smallest)
+# =============================================================================
+# Server Configuration
+# =============================================================================
 server:
   image:
     tag: latest
@@ -137,6 +86,32 @@ server:
   autoscaling:
     enabled: false
 
+  # Environment variables for server (optional if provided via External Secrets)
+  # See references/server-variables.yaml for full list
+  # config:
+  #   # Required
+  #   CLOUD_PROVIDER: "aws"
+  #   SERVERLESS_ENVIRONMENT: "false"
+  #   AUTH_PROVIDER: "cognito"
+  #   SERVER_URL: "https://example.com"
+  #   WEB_URL: "https://example.com"
+  #   STORAGE_USER_FILES_BUCKET: ""
+  #   STORAGE_DOCUMENTS_BUCKET: ""
+  #   STORAGE_TENANT_MIGRATIONS_BUCKET: ""
+  #   # Required for AWS
+  #   AWS_REGION: "us-west-2"
+  #   COGNITO_USER_POOL_ID: ""
+  #   COGNITO_REGION: "us-west-2"
+  #   KMS_SECRETS_KEYRING: ""
+  #   KMS_SECRETS_KEY: ""
+  #   KMS_CONNECTIONS_KEYRING: ""
+  #   KMS_CONNECTIONS_KEY: ""
+  #   KMS_ENVIRONMENT_KEYRING: ""
+  #   KMS_ENVIRONMENT_KEY: ""
+
+# =============================================================================
+# Web Configuration
+# =============================================================================
 web:
   image:
     tag: latest
@@ -151,6 +126,21 @@ web:
   autoscaling:
     enabled: false
 
+  # Environment variables for web (optional if provided via External Secrets)
+  # See references/web-variables.yaml for full list
+  # config:
+  #   # Required
+  #   AUTH_PROVIDER: "cognito"
+  #   SERVER_URL: "https://example.com"
+  #   WEB_URL: "https://example.com"
+  #   # Required for AWS
+  #   COGNITO_USER_POOL_ID: ""
+  #   COGNITO_CLIENT_ID: ""
+  #   COGNITO_DOMAIN: ""
+
+# =============================================================================
+# Worker Configuration
+# =============================================================================
 worker:
   image:
     tag: latest
@@ -164,6 +154,25 @@ worker:
       cpu: "500m"
   autoscaling:
     enabled: false
+
+  # Environment variables for worker (optional if provided via External Secrets)
+  # See references/worker-variables.yaml for full list
+  # config:
+  #   # Required
+  #   CLOUD_PROVIDER: "aws"
+  #   SERVERLESS_ENVIRONMENT: "false"
+  #   SERVER_URL: "https://example.com"
+  #   STORAGE_USER_FILES_BUCKET: ""
+  #   STORAGE_DOCUMENTS_BUCKET: ""
+  #   STORAGE_TENANT_MIGRATIONS_BUCKET: ""
+  #   # Required for AWS
+  #   AWS_REGION: "us-west-2"
+  #   KMS_SECRETS_KEYRING: ""
+  #   KMS_SECRETS_KEY: ""
+  #   KMS_CONNECTIONS_KEYRING: ""
+  #   KMS_CONNECTIONS_KEY: ""
+  #   KMS_ENVIRONMENT_KEYRING: ""
+  #   KMS_ENVIRONMENT_KEY: ""
 
 # Node placement - use specific node groups if needed
 nodeSelector: {}

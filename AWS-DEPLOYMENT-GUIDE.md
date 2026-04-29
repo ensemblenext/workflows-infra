@@ -52,7 +52,8 @@ export AWS_PROFILE=ensemble
 export AWS_REGION=us-west-2
 export CLUSTER_NAME=workflows-prod
 export K8S_VERSION=1.35
-export SERVICE_ROOT_DOMAIN=example.com
+# TODO: Use your own domain name.
+export SERVICE_ROOT_DOMAIN=ensembleapp.ai
 export SERVICE_DOMAIN=aws-us-west-2.$SERVICE_ROOT_DOMAIN
 export SERVICE_ENDPOINT=https://$SERVICE_DOMAIN
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
