@@ -40,6 +40,13 @@ spec:
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if .Values.worker.config }}
+          env:
+            {{- range $key, $value := .Values.worker.config }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           readinessProbe:

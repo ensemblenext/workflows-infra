@@ -72,6 +72,10 @@ global:
 migrations:
   enabled: true  # Set to false to skip migrations during helm upgrade
   activeDeadlineSeconds: 600  # Maximum time for migration to complete (10 minutes)
+  image:
+    repository: workflows/migration
+    tag: latest
+    pullPolicy: Always
 
 # License configuration (AWS Marketplace)
 license:

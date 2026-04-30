@@ -6,6 +6,13 @@
 global:
   imageRegistry: "123456789.dkr.ecr.us-west-2.amazonaws.com"  # Your ECR registry
 
+# Database migrations (~100MB image vs full server image)
+migrations:
+  enabled: true
+  image:
+    repository: workflows/migration
+    tag: latest
+
 # Ingress - AWS ALB Ingress Controller
 ingress:
   enabled: true

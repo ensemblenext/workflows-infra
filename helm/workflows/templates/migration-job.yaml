@@ -37,10 +37,9 @@ spec:
       restartPolicy: Never
       containers:
         - name: migration
-          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
-          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
-          workingDir: /project/apps/server
-          command: ["npm", "run", "db:migrate"]
+          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+          imagePullPolicy: {{ .Values.migrations.image.pullPolicy }}
+          # No workingDir or command needed - Dockerfile CMD handles it
           {{- with .Values.server.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}

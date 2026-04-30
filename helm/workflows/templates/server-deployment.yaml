@@ -47,6 +47,10 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.server.service.targetPort | quote }}
+            {{- range $key, $value := .Values.server.config }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
           readinessProbe:

@@ -373,6 +373,12 @@ helm upgrade workflows infrastructure/helm/workflows \
 # Restart pods to pull new images
 kubectl rollout restart deployment -n workflows
 
+# Check pods
+kubectl get pods -n workflows
+
+# View logs
+kubectl logs workflows-worker-abc -n workflows  
+
 ```
 
 ## Cognito Identity Providers Setup
