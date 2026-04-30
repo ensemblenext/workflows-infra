@@ -373,6 +373,9 @@ helm upgrade workflows infrastructure/helm/workflows \
 # Restart pods to pull new images
 kubectl rollout restart deployment -n workflows
 
+# Rollout specific service
+kubectl rollout restart deployment workflows-web -n workflows  
+
 # Check pods
 kubectl get pods -n workflows
 

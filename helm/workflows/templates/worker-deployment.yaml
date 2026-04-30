@@ -50,21 +50,17 @@ spec:
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - "pgrep -f 'node.*worker' > /dev/null"
+            httpGet:
+              path: /
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
           livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - "pgrep -f 'node.*worker' > /dev/null"
+            httpGet:
+              path: /
+              port: 8080
             initialDelaySeconds: 60
             periodSeconds: 60
             timeoutSeconds: 10
