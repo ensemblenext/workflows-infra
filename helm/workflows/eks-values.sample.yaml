@@ -107,8 +107,8 @@ server:
   #   STORAGE_TENANT_MIGRATIONS_BUCKET: ""
   #   # Required for AWS
   #   AWS_REGION: "us-west-2"
-  #   COGNITO_USER_POOL_ID: ""
-  #   COGNITO_REGION: "us-west-2"
+  #   AWS_COGNITO_USER_POOL_ID: ""
+  #   AWS_COGNITO_REGION: "us-west-2"
   #   KMS_SECRETS_KEYRING: ""
   #   KMS_SECRETS_KEY: ""
   #   KMS_CONNECTIONS_KEYRING: ""
@@ -141,9 +141,9 @@ web:
   #   SERVER_URL: "https://example.com"
   #   WEB_URL: "https://example.com"
   #   # Required for AWS
-  #   COGNITO_USER_POOL_ID: ""
-  #   COGNITO_CLIENT_ID: ""
-  #   COGNITO_DOMAIN: ""
+  #   AWS_COGNITO_USER_POOL_ID: ""
+  #   AWS_COGNITO_CLIENT_ID: ""
+  #   AWS_COGNITO_DOMAIN: ""
 
 # =============================================================================
 # Worker Configuration

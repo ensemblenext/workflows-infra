@@ -20,6 +20,8 @@ This Terraform configuration provisions supporting AWS resources for the Workflo
 ### Authentication (Optional)
 - **Cognito User Pool** - For user authentication
 - **Cognito User Pool Client** - Web/SPA client
+- **Cognito Resource Server** - For scheduler API OAuth scopes (when `cognito_enable_scheduler_oauth=true`)
+- **Cognito M2M Client** - For EventBridge Scheduler OAuth authentication (when `cognito_enable_scheduler_oauth=true`)
 
 ### Secrets
 - **Secrets Manager Secret** - Template for app secrets
@@ -145,8 +147,8 @@ export AWS_PROFILE=ensemble
 terraform init
 
 # Copy and customize variables
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars and set eks_oidc_provider_arn
+cp environments/sample.tfvars environments/prod.tfvars
+# Edit prod.tfvars and set eks_oidc_provider_arn
 
 # Plan deployment
 terraform plan -var-file=environments/prod.tfvars
@@ -154,6 +156,32 @@ terraform plan -var-file=environments/prod.tfvars
 # Apply
 terraform apply -var-file=environments/prod.tfvars
 ```
+
+## Importing Existing Resources
+
+If you already have AWS resources created (manually or from a previous deployment), import them into Terraform state before applying:
+
+```bash
+cd infrastructure/terraform
+export AWS_PROFILE=ensemble
+
+# Initialize Terraform first
+terraform init
+
+# Import all existing resources (safe to run multiple times)
+./import-existing.sh prod
+
+# Verify what Terraform will do
+terraform plan -var-file=environments/prod.tfvars
+
+# Apply changes
+terraform apply -var-file=environments/prod.tfvars
+```
+
+The import script:
+- Automatically detects and imports existing resources
+- Skips resources that don't exist or are already imported
+- Safe to run multiple times
 
 ## Configuration
 
@@ -170,6 +198,8 @@ terraform apply -var-file=environments/prod.tfvars
 | `eks_service_account_name` | K8s service account name | `workflows-sa` |
 | `enable_cognito` | Enable Cognito resources | `true` |
 | `enable_scheduler` | Enable Scheduler resources | `true` |
+| `cognito_enable_scheduler_oauth` | Enable OAuth M2M client for scheduler | `false` |
+| `cognito_scheduler_api_identifier` | Resource server identifier for scheduler API | `""` |
 | `s3_force_destroy` | Allow destroying non-empty buckets | `false` |
 | `s3_versioning_enabled` | Enable S3 versioning | `true` |
 
@@ -202,6 +232,47 @@ When using existing resources:
 - Terraform will **not** manage the lifecycle of these resources
 - You are responsible for ensuring proper encryption and access policies
 - IAM policies will still be created to grant access to these resources
+
+## Scheduler Authentication
+
+EventBridge Scheduler needs to authenticate when calling your API. Two options are available:
+
+### Option 1: API Key (Simple)
+
+```hcl
+# environments/prod.tfvars
+scheduler_api_destination_endpoint      = "https://your-domain.com/api/scheduler/callback"
+scheduler_api_destination_auth_type     = "API_KEY"
+scheduler_api_destination_api_key_name  = "x-api-key"
+scheduler_api_destination_api_key_value = "your-secure-api-key"
+```
+
+Set the same value in the server environment as `SCHEDULER_CALLBACK_API_KEY`. If you use a
+different API key header name, also set `SCHEDULER_CALLBACK_API_KEY_HEADER`.
+
+### Option 2: Cognito OAuth M2M (Recommended for Production)
+
+Uses Cognito Machine-to-Machine OAuth with client credentials flow:
+
+```hcl
+# environments/prod.tfvars
+scheduler_api_destination_endpoint   = "https://your-domain.com/api/scheduler/callback"
+scheduler_api_destination_auth_type  = "OAUTH_CLIENT_CREDENTIALS"
+cognito_enable_scheduler_oauth       = true
+cognito_scheduler_api_identifier     = "https://your-domain.com/api"
+```
+
+When `cognito_enable_scheduler_oauth=true`, Terraform automatically:
+1. Creates a Cognito Resource Server with `scheduler.trigger` scope
+2. Creates an M2M App Client with client credentials grant
+3. Configures EventBridge to use OAuth tokens for API calls
+
+View the generated OAuth credentials:
+
+```bash
+terraform output cognito_scheduler_oauth_client_id
+terraform output -raw cognito_scheduler_oauth_client_secret
+```
 
 ## Environment-Specific Deployments
 
@@ -249,6 +320,10 @@ After deployment, the following outputs are available:
 | `workloads_role_arn` | EKS workloads role ARN |
 | `cognito_user_pool_id` | Cognito User Pool ID |
 | `cognito_user_pool_client_id` | Cognito Client ID |
+| `cognito_scheduler_oauth_client_id` | OAuth Client ID for scheduler (when enabled) |
+| `cognito_scheduler_oauth_client_secret` | OAuth Client Secret for scheduler (sensitive) |
+| `cognito_scheduler_oauth_token_endpoint` | OAuth Token Endpoint URL |
+| `cognito_scheduler_oauth_scope` | OAuth Scope for scheduler API |
 | `helm_config_values` | Map of environment variables for Helm |
 | `service_account_annotation` | K8s ServiceAccount annotation for IRSA |
 
@@ -327,12 +402,12 @@ terraform/
 ├── variables.tf         # Input variables
 ├── outputs.tf           # Output values
 ├── versions.tf          # Provider configuration
-├── terraform.tfvars.example
+├── import-existing.sh   # Import existing AWS resources
 ├── environments/
-│   ├── sample.tfvars
-│   └── prod.tfvars
+│   ├── sample.tfvars    # Example configuration
+│   └── prod.tfvars      # Production configuration
 └── modules/
-    ├── cognito/         # Cognito User Pool
+    ├── cognito/         # Cognito User Pool + OAuth
     ├── iam/             # IAM roles and policies
     ├── kms/             # KMS encryption key
     ├── s3/              # S3 buckets

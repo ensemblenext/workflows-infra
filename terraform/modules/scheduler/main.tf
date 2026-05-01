@@ -141,7 +141,7 @@ variable "event_source" {
 variable "event_detail_type" {
   description = "EventBridge detail-type value schedules must use when putting scheduled callback events"
   type        = string
-  default     = "ScheduledWorkflow"
+  default     = "ScheduledEvent"
 }
 
 variable "tags" {
@@ -309,6 +309,21 @@ resource "aws_iam_role_policy" "eventbridge_api_destination" {
         Effect   = "Allow"
         Action   = "events:InvokeApiDestination"
         Resource = aws_cloudwatch_event_api_destination.scheduler_api[0].arn
+      },
+      {
+        Sid      = "RetrieveConnectionCredentials"
+        Effect   = "Allow"
+        Action   = "events:RetrieveConnectionCredentials"
+        Resource = aws_cloudwatch_event_connection.scheduler_api[0].arn
+      },
+      {
+        Sid    = "GetConnectionSecret"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:*:*:secret:events!connection/${var.name_prefix}-scheduler-api/*"
       }
     ]
   })
@@ -339,11 +354,14 @@ resource "aws_cloudwatch_event_target" "scheduler_api" {
   arn            = aws_cloudwatch_event_api_destination.scheduler_api[0].arn
   role_arn       = aws_iam_role.eventbridge_api_destination[0].arn
 
-  input_transformer {
-    input_paths = {
-      detail = "$.detail"
-    }
-    input_template = "<detail>"
+  # Forward the full scheduler detail envelope to the dispatcher. The envelope
+  # includes the intended app target URL plus the request body, allowing one API
+  # Destination endpoint to route multiple scheduler callback types.
+  input_path = "$.detail"
+
+  retry_policy {
+    maximum_event_age_in_seconds = 60 # Minimum allowed value
+    maximum_retry_attempts       = 0  # No retries
   }
 }
 

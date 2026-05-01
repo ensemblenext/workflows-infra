@@ -15,10 +15,18 @@ enable_cognito   = true
 enable_scheduler = true
 
 # EventBridge Scheduler callback delivery
-scheduler_api_destination_endpoint      = "https://workflows-dev.example.com/api/scheduler/callback"
+scheduler_api_destination_endpoint = "https://workflows-dev.example.com/api/scheduler/callback"
+
+# Option 1: API Key authentication (simpler)
 scheduler_api_destination_auth_type     = "API_KEY"
 scheduler_api_destination_api_key_name  = "x-api-key"
 scheduler_api_destination_api_key_value = "replace-with-a-strong-shared-secret"
+
+# Option 2: Cognito OAuth M2M authentication (more secure)
+# Uncomment the following and comment out Option 1:
+# scheduler_api_destination_auth_type  = "OAUTH_CLIENT_CREDENTIALS"
+# cognito_enable_scheduler_oauth       = true
+# cognito_scheduler_api_identifier     = "https://workflows-dev.example.com/api"
 
 # Cognito URLs
 cognito_callback_urls = [

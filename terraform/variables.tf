@@ -163,7 +163,7 @@ variable "scheduler_event_source" {
 variable "scheduler_event_detail_type" {
   description = "EventBridge detail-type value for scheduled callback events"
   type        = string
-  default     = "ScheduledWorkflow"
+  default     = "ScheduledEvent"
 }
 
 # Cognito Configuration
@@ -177,6 +177,18 @@ variable "cognito_logout_urls" {
   description = "Allowed logout URLs for Cognito"
   type        = list(string)
   default     = ["http://localhost:3000"]
+}
+
+variable "cognito_enable_scheduler_oauth" {
+  description = "Enable OAuth client for EventBridge Scheduler M2M authentication"
+  type        = bool
+  default     = false
+}
+
+variable "cognito_scheduler_api_identifier" {
+  description = "Resource server identifier for scheduler API (e.g., https://api.example.com)"
+  type        = string
+  default     = ""
 }
 
 # S3 Configuration

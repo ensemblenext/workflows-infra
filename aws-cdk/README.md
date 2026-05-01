@@ -264,8 +264,8 @@ config:
 
   # Auth (if using Cognito)
   AUTH_PROVIDER: "cognito"
-  COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
-  COGNITO_REGION: "us-west-2"
+  AWS_COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
+  AWS_COGNITO_REGION: "us-west-2"
 
 serviceAccount:
   create: true

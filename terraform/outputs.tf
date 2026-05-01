@@ -108,6 +108,27 @@ output "cognito_user_pool_domain" {
   value       = var.enable_cognito ? module.cognito[0].user_pool_domain : ""
 }
 
+output "cognito_scheduler_oauth_client_id" {
+  description = "Cognito OAuth Client ID for EventBridge Scheduler"
+  value       = var.enable_cognito && var.cognito_enable_scheduler_oauth ? module.cognito[0].scheduler_oauth_client_id : ""
+}
+
+output "cognito_scheduler_oauth_client_secret" {
+  description = "Cognito OAuth Client Secret for EventBridge Scheduler"
+  value       = var.enable_cognito && var.cognito_enable_scheduler_oauth ? module.cognito[0].scheduler_oauth_client_secret : ""
+  sensitive   = true
+}
+
+output "cognito_scheduler_oauth_token_endpoint" {
+  description = "Cognito OAuth Token Endpoint for EventBridge Scheduler"
+  value       = var.enable_cognito && var.cognito_enable_scheduler_oauth ? module.cognito[0].scheduler_oauth_token_endpoint : ""
+}
+
+output "cognito_scheduler_oauth_scope" {
+  description = "Cognito OAuth Scope for EventBridge Scheduler"
+  value       = var.enable_cognito && var.cognito_enable_scheduler_oauth ? module.cognito[0].scheduler_oauth_scope : ""
+}
+
 # ============================================
 # Secrets Outputs
 # ============================================
@@ -127,24 +148,24 @@ output "app_secrets_name" {
 output "helm_config_values" {
   description = "Environment variables for Helm chart"
   value = {
-    CLOUD_PROVIDER                   = "aws"
-    AWS_REGION                       = data.aws_region.current.name
-    SERVERLESS_ENVIRONMENT           = "false"
-    STORAGE_USER_FILES_BUCKET        = module.s3.user_files_bucket_name
-    STORAGE_DOCUMENTS_BUCKET         = module.s3.documents_bucket_name
-    STORAGE_TENANT_MIGRATIONS_BUCKET = module.s3.tenant_migrations_bucket_name
-    KMS_KEY_ARN                      = module.kms.key_arn
-    SCHEDULER_ROLE_ARN               = module.iam.scheduler_role_arn
-    SCHEDULER_GROUP_NAME             = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
-    SCHEDULER_TARGET_ARN             = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
-    SCHEDULER_EVENT_BUS_NAME         = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
-    SCHEDULER_EVENT_SOURCE           = var.enable_scheduler ? module.scheduler[0].scheduler_event_source : ""
-    SCHEDULER_EVENT_DETAIL_TYPE      = var.enable_scheduler ? module.scheduler[0].scheduler_event_detail_type : ""
-    SCHEDULER_API_DESTINATION_ARN    = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
-    SCHEDULER_SERVICE_URL            = var.scheduler_api_destination_endpoint
-    AUTH_PROVIDER                    = var.enable_cognito ? "cognito" : "firebase"
-    COGNITO_USER_POOL_ID             = var.enable_cognito ? module.cognito[0].user_pool_id : ""
-    COGNITO_REGION                   = data.aws_region.current.name
+    CLOUD_PROVIDER                       = "aws"
+    AUTH_PROVIDER                        = var.enable_cognito ? "cognito" : "firebase"
+    SERVERLESS_ENVIRONMENT               = "false"
+    STORAGE_USER_FILES_BUCKET            = module.s3.user_files_bucket_name
+    STORAGE_DOCUMENTS_BUCKET             = module.s3.documents_bucket_name
+    STORAGE_TENANT_MIGRATIONS_BUCKET     = module.s3.tenant_migrations_bucket_name
+    SCHEDULER_SERVICE_URL                = var.scheduler_api_destination_endpoint
+    KMS_KEY_ARN                          = module.kms.key_arn
+    AWS_REGION                           = data.aws_region.current.name
+    AWS_SCHEDULER_ROLE_ARN               = module.iam.scheduler_role_arn
+    AWS_SCHEDULER_GROUP_NAME             = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
+    AWS_SCHEDULER_TARGET_ARN             = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
+    AWS_SCHEDULER_EVENT_BUS_NAME         = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
+    AWS_SCHEDULER_EVENT_SOURCE           = var.enable_scheduler ? module.scheduler[0].scheduler_event_source : ""
+    AWS_SCHEDULER_EVENT_DETAIL_TYPE      = var.enable_scheduler ? module.scheduler[0].scheduler_event_detail_type : ""
+    AWS_SCHEDULER_API_DESTINATION_ARN    = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
+    AWS_COGNITO_USER_POOL_ID             = var.enable_cognito ? module.cognito[0].user_pool_id : ""
+    AWS_COGNITO_REGION                   = data.aws_region.current.name
   }
 }
 

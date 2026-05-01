@@ -37,10 +37,10 @@ config:
   # FIREBASE_MEASUREMENT_ID: ""
 
   # AWS Cognito settings (when AUTH_PROVIDER=cognito)
-  # COGNITO_USER_POOL_ID: ""  # e.g., us-east-1_xxxxx
-  # COGNITO_CLIENT_ID: ""
-  # COGNITO_DOMAIN: ""  # e.g., xxxxx.auth.us-east-1.amazoncognito.com
-  # COGNITO_REGION: ""  # defaults to AWS_REGION
+  # AWS_COGNITO_USER_POOL_ID: ""  # e.g., us-east-1_xxxxx
+  # AWS_COGNITO_CLIENT_ID: ""
+  # AWS_COGNITO_DOMAIN: ""  # e.g., xxxxx.auth.us-east-1.amazoncognito.com
+  # AWS_COGNITO_REGION: ""  # defaults to AWS_REGION
 
   # ===========================================
   # Scheduler Configuration
@@ -49,19 +49,14 @@ config:
 
   # GCP Cloud Scheduler settings (when CLOUD_PROVIDER=gcp)
   # GOOGLE_CLOUD_PROJECT: ""   # GCP project ID (uses workload identity if not set)
-  # SCHEDULER_LOCATION: "us-central1"  # GCP region for Cloud Scheduler
 
   # AWS EventBridge Scheduler settings (when CLOUD_PROVIDER=aws)
   # AWS_REGION: "us-east-1"  # AWS region
-  # SCHEDULER_ROLE_ARN: ""   # IAM role ARN for EventBridge Scheduler
-  # SCHEDULER_GROUP_NAME: "default"  # EventBridge schedule group name
-  # SCHEDULER_TARGET_ARN: ""  # EventBridge event bus ARN to use as the schedule target
-  # SCHEDULER_EVENT_BUS_NAME: ""  # EventBridge event bus name for scheduled callback events
-  # SCHEDULER_EVENT_SOURCE: "workflows.scheduler"  # Must match Terraform scheduler_event_source
-  # SCHEDULER_EVENT_DETAIL_TYPE: "ScheduledWorkflow"  # Must match Terraform scheduler_event_detail_type
-  # SCHEDULER_API_DESTINATION_ARN: ""  # Terraform-created API Destination ARN for reference/debugging
+  # AWS_SCHEDULER_ROLE_ARN: ""   # IAM role ARN for EventBridge Scheduler
+  # AWS_SCHEDULER_GROUP_NAME: "default"  # EventBridge schedule group name
+  # AWS_SCHEDULER_TARGET_ARN: ""  # EventBridge event bus ARN to use as the schedule target
+  # AWS_SCHEDULER_EVENT_SOURCE: "workflows.scheduler"  # Must match Terraform scheduler_event_source
   # Scheduler callback auth is configured in Terraform's EventBridge Connection.
-  # If using API_KEY auth, set SCHEDULER_CALLBACK_API_KEY in the server secrets.
 
 # Global settings
 global:
@@ -314,10 +309,6 @@ externalSecrets:
   #   - secretKey: ANTHROPIC_API_KEY
   #     remoteRef:
   #       key: workflows-prod/anthropic
-  #       property: api_key
-  #   - secretKey: SCHEDULER_CALLBACK_API_KEY
-  #     remoteRef:
-  #       key: workflows-prod/scheduler
   #       property: api_key
 
 # Secrets configuration

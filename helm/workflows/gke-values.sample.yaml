@@ -14,7 +14,6 @@ config:
 
   # GCP Cloud Scheduler Configuration
   # SCHEDULER_SERVICE_URL: ""  # Callback URL for scheduled jobs (defaults to SERVER_URL)
-  # SCHEDULER_LOCATION: "us-central1"  # GCP region for Cloud Scheduler
   # Note: GOOGLE_CLOUD_PROJECT is auto-detected via GKE Workload Identity
 
 global:

@@ -21,6 +21,21 @@ variable "tags" {
   default     = {}
 }
 
+variable "enable_scheduler_oauth" {
+  description = "Enable OAuth client for EventBridge Scheduler M2M authentication"
+  type        = bool
+  default     = false
+}
+
+variable "scheduler_api_identifier" {
+  description = "Resource server identifier for scheduler API (e.g., https://api.example.com)"
+  type        = string
+  default     = ""
+}
+
+# Data sources
+data "aws_region" "current" {}
+
 resource "aws_cognito_user_pool" "main" {
   name = "${var.name_prefix}-users"
 
@@ -142,6 +157,51 @@ resource "aws_cognito_user_pool_domain" "main" {
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
+# ============================================
+# Scheduler OAuth (M2M) Resources
+# ============================================
+
+# Resource Server for Scheduler API
+resource "aws_cognito_resource_server" "scheduler_api" {
+  count = var.enable_scheduler_oauth ? 1 : 0
+
+  identifier   = var.scheduler_api_identifier
+  name         = "${var.name_prefix}-scheduler-api"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  scope {
+    scope_name        = "scheduler.trigger"
+    scope_description = "Trigger scheduled evaluations"
+  }
+}
+
+# M2M App Client for EventBridge Scheduler
+resource "aws_cognito_user_pool_client" "eventbridge_scheduler" {
+  count = var.enable_scheduler_oauth ? 1 : 0
+
+  name         = "${var.name_prefix}-eventbridge-scheduler"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  # M2M requires client secret
+  generate_secret = true
+
+  # Client credentials flow for M2M
+  explicit_auth_flows                  = []
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes = [
+    "${aws_cognito_resource_server.scheduler_api[0].identifier}/scheduler.trigger"
+  ]
+  supported_identity_providers = ["COGNITO"]
+
+  # Token validity for M2M
+  access_token_validity = 1 # hours
+
+  token_validity_units {
+    access_token = "hours"
+  }
+}
+
 # Outputs
 output "user_pool_id" {
   value = aws_cognito_user_pool.main.id
@@ -161,4 +221,26 @@ output "user_pool_domain" {
 
 output "user_pool_endpoint" {
   value = aws_cognito_user_pool.main.endpoint
+}
+
+# Scheduler OAuth outputs
+output "scheduler_oauth_client_id" {
+  description = "Client ID for EventBridge Scheduler OAuth"
+  value       = var.enable_scheduler_oauth ? aws_cognito_user_pool_client.eventbridge_scheduler[0].id : ""
+}
+
+output "scheduler_oauth_client_secret" {
+  description = "Client secret for EventBridge Scheduler OAuth"
+  value       = var.enable_scheduler_oauth ? aws_cognito_user_pool_client.eventbridge_scheduler[0].client_secret : ""
+  sensitive   = true
+}
+
+output "scheduler_oauth_token_endpoint" {
+  description = "OAuth token endpoint for EventBridge Scheduler"
+  value       = var.enable_scheduler_oauth ? "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/token" : ""
+}
+
+output "scheduler_oauth_scope" {
+  description = "OAuth scope for EventBridge Scheduler"
+  value       = var.enable_scheduler_oauth ? "${var.scheduler_api_identifier}/scheduler.trigger" : ""
 }

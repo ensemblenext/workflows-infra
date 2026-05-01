@@ -6,9 +6,9 @@ environments:
     - SERVER_URL
     - WEB_URL
   required[aws]:
-    - COGNITO_USER_POOL_ID
-    - COGNITO_CLIENT_ID
-    - COGNITO_DOMAIN
+    - AWS_COGNITO_USER_POOL_ID
+    - AWS_COGNITO_CLIENT_ID
+    - AWS_COGNITO_DOMAIN
   required[firebase]:
     - FIREBASE_API_KEY
     - FIREBASE_AUTH_DOMAIN

@@ -88,13 +88,47 @@ module "scheduler" {
   api_destination_api_key_value                    = var.scheduler_api_destination_api_key_value
   api_destination_basic_username                   = var.scheduler_api_destination_basic_username
   api_destination_basic_password                   = var.scheduler_api_destination_basic_password
-  api_destination_oauth_authorization_endpoint     = var.scheduler_api_destination_oauth_authorization_endpoint
-  api_destination_oauth_http_method                = var.scheduler_api_destination_oauth_http_method
-  api_destination_oauth_client_id                  = var.scheduler_api_destination_oauth_client_id
-  api_destination_oauth_client_secret              = var.scheduler_api_destination_oauth_client_secret
-  api_destination_oauth_http_parameters            = var.scheduler_api_destination_oauth_http_parameters
   event_source                                     = var.scheduler_event_source
   event_detail_type                                = var.scheduler_event_detail_type
+
+  # OAuth from Cognito (when using OAUTH_CLIENT_CREDENTIALS with Cognito)
+  api_destination_oauth_authorization_endpoint = (
+    var.scheduler_api_destination_auth_type == "OAUTH_CLIENT_CREDENTIALS" && var.cognito_enable_scheduler_oauth && var.enable_cognito
+    ? module.cognito[0].scheduler_oauth_token_endpoint
+    : var.scheduler_api_destination_oauth_authorization_endpoint
+  )
+  api_destination_oauth_http_method = var.scheduler_api_destination_oauth_http_method
+  api_destination_oauth_client_id = (
+    var.scheduler_api_destination_auth_type == "OAUTH_CLIENT_CREDENTIALS" && var.cognito_enable_scheduler_oauth && var.enable_cognito
+    ? module.cognito[0].scheduler_oauth_client_id
+    : var.scheduler_api_destination_oauth_client_id
+  )
+  api_destination_oauth_client_secret = (
+    var.scheduler_api_destination_auth_type == "OAUTH_CLIENT_CREDENTIALS" && var.cognito_enable_scheduler_oauth && var.enable_cognito
+    ? module.cognito[0].scheduler_oauth_client_secret
+    : var.scheduler_api_destination_oauth_client_secret
+  )
+  # Pass OAuth parameters for Cognito client credentials flow
+  api_destination_oauth_http_parameters = (
+    var.scheduler_api_destination_auth_type == "OAUTH_CLIENT_CREDENTIALS" && var.cognito_enable_scheduler_oauth && var.enable_cognito
+    ? {
+        body = [
+          {
+            key             = "grant_type"
+            value           = "client_credentials"
+            is_value_secret = false
+          },
+          {
+            key             = "scope"
+            value           = module.cognito[0].scheduler_oauth_scope
+            is_value_secret = false
+          }
+        ]
+        header       = []
+        query_string = []
+      }
+    : var.scheduler_api_destination_oauth_http_parameters
+  )
 
   tags = local.common_tags
 }
@@ -106,10 +140,12 @@ module "cognito" {
   source = "./modules/cognito"
   count  = var.enable_cognito ? 1 : 0
 
-  name_prefix   = local.name_prefix
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
-  tags          = local.common_tags
+  name_prefix              = local.name_prefix
+  callback_urls            = var.cognito_callback_urls
+  logout_urls              = var.cognito_logout_urls
+  enable_scheduler_oauth   = var.cognito_enable_scheduler_oauth
+  scheduler_api_identifier = var.cognito_scheduler_api_identifier
+  tags                     = local.common_tags
 }
 
 # ============================================
