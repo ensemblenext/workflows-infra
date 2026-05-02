@@ -355,13 +355,13 @@ config:
   KMS_KEY_ARN: "arn:aws:kms:us-west-2:123456789:key/xxx"
 
   # Scheduler
-  SCHEDULER_ROLE_ARN: "arn:aws:iam::123456789:role/workflows-prod-scheduler-role"
-  SCHEDULER_GROUP_NAME: "workflows-prod-schedules"
+  AWS_SCHEDULER_ROLE_ARN: "arn:aws:iam::123456789:role/workflows-prod-scheduler-role"
+  AWS_SCHEDULER_GROUP_NAME: "workflows-prod-schedules"
 
   # Auth (if using Cognito)
   AUTH_PROVIDER: "cognito"
-  COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
-  COGNITO_REGION: "us-west-2"
+  AWS_COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
+  AWS_COGNITO_REGION: "us-west-2"
 
 serviceAccount:
   create: true

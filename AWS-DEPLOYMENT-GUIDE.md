@@ -488,9 +488,9 @@ config:
   AUTH_PROVIDER: "cognito"
   SERVER_URL: "https://${YOUR_SERVER_URL}"
   WEB_URL: "https://${YOUR_WEB_URL}"
-  COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
-  COGNITO_CLIENT_ID: "xxxxx"
-  COGNITO_DOMAIN: "xxxxx.auth.us-west-2.amazoncognito.com"
+  AWS_COGNITO_USER_POOL_ID: "us-west-2_xxxxx"
+  AWS_COGNITO_CLIENT_ID: "xxxxx"
+  AWS_COGNITO_DOMAIN: "xxxxx.auth.us-west-2.amazoncognito.com"
 ```
 
 > **Note:** Web app configuration is loaded at runtime. One Docker image works for all environments.
