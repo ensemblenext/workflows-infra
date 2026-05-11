@@ -43,6 +43,8 @@ environments:
     - TEMPORAL_NAMESPACE
     - TEMPORAL_TASK_QUEUE
     - TEMPORAL_TLS # true, false
+    - TEMPORAL_TLS_CA # CA certificate path (mTLS)
+    - TEMPORAL_TLS_CERT # Client certificate path (mTLS)
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
 
 secrets:

@@ -46,6 +46,9 @@ This starts:
 | `TEMPORAL_TASK_QUEUE` | Task queue name | `dynamic-workflow-task-queue-dev` |
 | `TEMPORAL_TLS` | Enable TLS | `false` for local, `true` for production |
 | `TEMPORAL_API_KEY` | API key (Temporal Cloud only) | - |
+| `TEMPORAL_TLS_CA` | CA certificate path (mTLS) | `/path/to/ca.crt` |
+| `TEMPORAL_TLS_CERT` | Client certificate path (mTLS) | `/path/to/client.crt` |
+| `TEMPORAL_TLS_KEY` | Client key path (mTLS) | `/path/to/client.key` |
 
 ### Local Development `.env`
 
@@ -122,7 +125,146 @@ openssl x509 -req -in temporal-client.csr -CA ca.crt -CAkey ca.key \
   -CAcreateserial -out temporal-client.crt -days 365
 ```
 
-2. **Configure environment:**
+2. **Certificate structure:**
+
+```
+certs/
+├── ca.crt              # CA certificate (shared by server and clients)
+├── ca.key              # CA private key (keep secure, used for signing only)
+├── temporal-server.crt # Temporal server certificate
+├── temporal-server.key # Temporal server private key
+├── temporal-client.crt # Client certificate (for workers/server app)
+└── temporal-client.key # Client private key
+```
+
+| Component | Needs |
+|-----------|-------|
+| **Temporal Server** | `server.crt`, `server.key`, `ca.crt` (to verify clients) |
+| **Your Server/Worker** | `client.crt`, `client.key`, `ca.crt` (to verify server) |
+
+3. **Configure Temporal Server:**
+
+Create `temporal-config.yaml` for the Temporal server:
+
+```yaml
+global:
+  tls:
+    internode:
+      server:
+        certFile: /etc/temporal/certs/temporal-server.crt
+        keyFile: /etc/temporal/certs/temporal-server.key
+        clientCAFiles:
+          - /etc/temporal/certs/ca.crt
+        requireClientAuth: true
+    frontend:
+      server:
+        certFile: /etc/temporal/certs/temporal-server.crt
+        keyFile: /etc/temporal/certs/temporal-server.key
+        clientCAFiles:
+          - /etc/temporal/certs/ca.crt
+        requireClientAuth: true
+```
+
+4. **Docker Compose setup:**
+
+```yaml
+version: '3.8'
+services:
+  postgresql:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    volumes:
+      - temporal-db:/var/lib/postgresql/data
+
+  temporal:
+    image: temporalio/server:latest
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development.yaml
+    volumes:
+      - ./certs:/etc/temporal/certs
+      - ./temporal-config.yaml:/etc/temporal/config/config_template.yaml
+    depends_on:
+      - postgresql
+
+  temporal-admin-tools:
+    image: temporalio/admin-tools:latest
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_TLS_CA=/etc/temporal/certs/ca.crt
+      - TEMPORAL_TLS_CERT=/etc/temporal/certs/temporal-client.crt
+      - TEMPORAL_TLS_KEY=/etc/temporal/certs/temporal-client.key
+    volumes:
+      - ./certs:/etc/temporal/certs
+    depends_on:
+      - temporal
+    stdin_open: true
+    tty: true
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    ports:
+      - "8233:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_TLS_CA=/etc/temporal/certs/ca.crt
+      - TEMPORAL_TLS_CERT=/etc/temporal/certs/temporal-client.crt
+      - TEMPORAL_TLS_KEY=/etc/temporal/certs/temporal-client.key
+    volumes:
+      - ./certs:/etc/temporal/certs
+    depends_on:
+      - temporal
+
+volumes:
+  temporal-db:
+```
+
+> **Note:** For a complete Docker Compose setup, refer to the official [temporalio/docker-compose](https://github.com/temporalio/docker-compose) repository.
+
+5. **Kubernetes / Helm setup:**
+
+Create a secret with certificates:
+```bash
+kubectl create secret generic temporal-tls-certs \
+  --from-file=ca.crt=./certs/ca.crt \
+  --from-file=temporal-server.crt=./certs/temporal-server.crt \
+  --from-file=temporal-server.key=./certs/temporal-server.key
+```
+
+Configure Helm values:
+```yaml
+# values.yaml
+server:
+  config:
+    tls:
+      frontend:
+        server:
+          certFile: /etc/temporal/certs/temporal-server.crt
+          keyFile: /etc/temporal/certs/temporal-server.key
+          clientCAFiles:
+            - /etc/temporal/certs/ca.crt
+          requireClientAuth: true
+
+  extraVolumes:
+    - name: temporal-certs
+      secret:
+        secretName: temporal-tls-certs
+
+  extraVolumeMounts:
+    - name: temporal-certs
+      mountPath: /etc/temporal/certs
+      readOnly: true
+```
+
+6. **Configure your application (server/worker):**
 
 ```bash
 TEMPORAL_TLS_CA=/path/to/ca.crt
