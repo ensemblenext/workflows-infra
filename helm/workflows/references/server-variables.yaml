@@ -47,6 +47,12 @@ environments:
     - TEMPORAL_TLS_CA # CA certificate path (mTLS)
     - TEMPORAL_TLS_CERT # Client certificate path (mTLS)
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
+    # Vector Embedding
+    - VECTOR_EMBEDDING_PROVIDER # openai, azure, bedrock (default: openai)
+    - VECTOR_EMBEDDING_MODEL # default: text-embedding-3-small
+    - VECTOR_EMBEDDING_API_ENDPOINT # Azure endpoint
+    - VECTOR_EMBEDDING_REGION # Bedrock region (falls back to AWS_REGION)
+    - VECTOR_EMBEDDING_DIMENSIONS # optional dimensions for models that support it
 
 secrets:
   required:
@@ -83,5 +89,7 @@ secrets:
     # Email service
     - RESEND_API_KEY
     - SENDGRID_API_KEY
+    # Vector Embedding
+    - VECTOR_EMBEDDING_API_KEY # API key for OpenAI/Azure embeddings (falls back to OPENAI_API_KEY)
   
   

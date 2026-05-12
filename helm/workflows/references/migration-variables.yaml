@@ -1,0 +1,51 @@
+# Migration Job Environment Variables
+# Used by: apps/server/scripts/migrate.ts
+# Image: Dockerfile.migration
+
+environments:
+  required:
+    - PG_BASE_URL # PostgreSQL connection URL (without database name), e.g., postgresql://user:pass@host:5432
+  optional:
+    - SYSTEM_DB_NAME # Database name (default: system)
+
+  # Required for SEED_DATA with user lookup
+  required[cognito]:
+    - AUTH_PROVIDER # Must be "cognito"
+    - AWS_COGNITO_USER_POOL_ID
+    - AWS_COGNITO_REGION # Falls back to AWS_REGION
+  required[firebase]:
+    - AUTH_PROVIDER # Must be "firebase"
+    - GOOGLE_APPLICATION_CREDENTIALS # Path to service account JSON
+
+# Seed data for bootstrapping tenants and users
+# Pass as JSON string in SEED_DATA environment variable
+#
+# Example:
+# SEED_DATA: |
+#   {
+#     "tenants": [{
+#       "id": "my-org",
+#       "label": "My Organization",
+#       "schemaType": "default"
+#     }],
+#     "accounts": [{
+#       "tenantId": "my-org",
+#       "email": "admin@example.com",
+#       "displayName": "Admin User",
+#       "accountRole": 60
+#     }]
+#   }
+#
+# Account roles:
+#   - Superuser: 80 (cross-tenant admin)
+#   - Owner: 60 (tenant owner)
+#   - Admin: 40
+#   - User: 20
+#
+# Notes:
+#   - The script looks up uid from Cognito/Firebase using the email
+#   - Users must exist in the auth provider before running migration
+#   - All operations use upsert (insert or update if exists)
+seed_data:
+  optional:
+    - SEED_DATA # JSON string with tenants and accounts to seed

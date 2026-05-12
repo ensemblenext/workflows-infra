@@ -20,6 +20,14 @@ environments:
     - FIREBASE_MEASUREMENT_ID
   optional:
     - TEMPORAL_WORKFLOW_URL
+    # Login Methods Configuration
+    # Only email/password is enabled by default
+    # Values: true, false
+    - LOGIN_EMAIL_PASSWORD_ENABLED # Enable email/password login (default: true)
+    - LOGIN_GOOGLE_ENABLED         # Enable Google OAuth (default: false)
+    - LOGIN_MICROSOFT_ENABLED      # Enable Microsoft OAuth (default: false)
+    - LOGIN_OKTA_ENABLED           # Enable Okta OIDC (default: false)
+
 secrets:
   optional:
     - ELEVENLABS_API_KEY
