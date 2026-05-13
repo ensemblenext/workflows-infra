@@ -32,19 +32,17 @@ environments:
 #       "tenantId": "my-org",
 #       "email": "admin@example.com",
 #       "displayName": "Admin User",
-#       "accountRole": 60
+#       "accountRole": "OWNER"
 #     }]
 #   }
 #
-# Account roles:
-#   - Superuser: 80 (cross-tenant admin)
-#   - Owner: 60 (tenant owner)
-#   - Admin: 40
-#   - User: 20
+# Account roles: SUPERUSER, OWNER, ADMIN, USER
 #
 # Notes:
 #   - The script looks up uid from Cognito/Firebase using the email
-#   - Users must exist in the auth provider before running migration
+#   - If the user doesn't exist, they will be created automatically:
+#     - Cognito: User receives an email invitation with temporary password
+#     - Firebase: User is created with a random password (use "forgot password" to set their own)
 #   - All operations use upsert (insert or update if exists)
 seed_data:
   optional:

@@ -40,6 +40,7 @@ environments:
     - FIREBASE_APP_ID
     - FIREBASE_MEASUREMENT_ID
   optional:
+    - SELF_HOSTING # Enable self-hosting mode: restricts tenant deletion to superuser only (default: false)
     - TEMPORAL_HOST
     - TEMPORAL_NAMESPACE
     - TEMPORAL_TASK_QUEUE

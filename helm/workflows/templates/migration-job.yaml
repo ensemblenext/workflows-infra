@@ -40,9 +40,16 @@ spec:
           image: "{{ include "workflows.imageRegistry" . }}{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
           imagePullPolicy: {{ .Values.migrations.image.pullPolicy }}
           # No workingDir or command needed - Dockerfile CMD handles it
-          {{- with .Values.server.envFrom }}
+          {{- with .Values.migrations.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.migrations.config }}
+          env:
+            {{- range $key, $value := .Values.migrations.config }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           {{- end }}
           resources:
             requests:
