@@ -384,6 +384,48 @@ kubectl logs workflows-worker-abc -n workflows
 
 ```
 
+## Updating Secrets
+
+Your setup uses `dataFrom: extract`, which **automatically syncs all keys** from AWS Secrets Manager.
+
+### Add a New Secret
+
+1. **Add the key to AWS Secrets Manager:**
+   ```bash
+   # Get current secret value
+   aws secretsmanager get-secret-value \
+     --secret-id workflows-prod/app-secrets \
+     --query SecretString --output text | jq .
+
+   # Update with new key (merge with existing)
+   aws secretsmanager put-secret-value \
+     --secret-id workflows-prod/app-secrets \
+     --secret-string "$(aws secretsmanager get-secret-value \
+       --secret-id workflows-prod/app-secrets \
+       --query SecretString --output text | jq '. + {"NEW_KEY": "new-value"}')"
+   ```
+
+2. **Wait for auto-sync** (up to 1 hour), OR force immediate sync:
+   ```bash
+   kubectl annotate externalsecret app-secrets -n workflows \
+     force-sync=$(date +%s) --overwrite
+   ```
+
+3. **Restart pods** to pick up the new environment variable:
+   ```bash
+   kubectl rollout restart deployment -n workflows
+   ```
+
+### Verify Secret Synced
+
+```bash
+# Check ExternalSecret status
+kubectl get externalsecret -n workflows
+
+# Verify the key exists in the K8s secret
+kubectl get secret app-secrets -n workflows -o jsonpath='{.data.NEW_KEY}' | base64 -d
+```
+
 ## Cognito Identity Providers Setup
 
 To enable Google and Microsoft sign-in, configure identity providers in Cognito.
