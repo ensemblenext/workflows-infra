@@ -380,8 +380,18 @@ kubectl rollout restart deployment workflows-web -n workflows
 kubectl get pods -n workflows
 
 # View logs
-kubectl logs workflows-worker-abc -n workflows  
+kubectl logs workflows-server-abc -n workflows
 
+# Terraform commands (must specify var-file for environment-specific configs)
+cd infrastructure/terraform
+terraform plan -var-file=environments/prod.tfvars
+terraform apply -var-file=environments/prod.tfvars
+
+# Or create a symlink to auto-load prod.tfvars
+ln -s environments/prod.tfvars terraform.tfvars
+# Then you can just run:
+terraform plan
+terraform apply
 ```
 
 ## Updating Secrets
