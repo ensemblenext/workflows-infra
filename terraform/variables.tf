@@ -191,6 +191,19 @@ variable "cognito_scheduler_api_identifier" {
   default     = ""
 }
 
+variable "cognito_google_client_id" {
+  description = "Google OAuth Client ID for Cognito identity provider"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_google_client_secret" {
+  description = "Google OAuth Client Secret for Cognito identity provider"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 # S3 Configuration
 variable "s3_force_destroy" {
   description = "Allow destroying S3 buckets with objects"

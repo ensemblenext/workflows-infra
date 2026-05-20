@@ -145,6 +145,8 @@ module "cognito" {
   logout_urls              = var.cognito_logout_urls
   enable_scheduler_oauth   = var.cognito_enable_scheduler_oauth
   scheduler_api_identifier = var.cognito_scheduler_api_identifier
+  google_client_id         = var.cognito_google_client_id
+  google_client_secret     = var.cognito_google_client_secret
   tags                     = local.common_tags
 }
 

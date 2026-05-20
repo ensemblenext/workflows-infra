@@ -330,6 +330,39 @@ resource "aws_iam_role_policy" "workloads_secrets" {
   })
 }
 
+# Bedrock Policy
+resource "aws_iam_role_policy" "workloads_bedrock" {
+  name = "${var.name_prefix}-workloads-bedrock-policy"
+  role = aws_iam_role.workloads.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "BedrockInvokeModel"
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*"
+        ]
+      },
+      {
+        Sid    = "BedrockListModels"
+        Effect = "Allow"
+        Action = [
+          "bedrock:ListFoundationModels",
+          "bedrock:GetFoundationModel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Outputs
 output "workloads_role_arn" {
   value = aws_iam_role.workloads.arn
