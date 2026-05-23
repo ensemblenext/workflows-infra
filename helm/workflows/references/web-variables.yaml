@@ -5,7 +5,7 @@ environments:
     - AUTH_PROVIDER # firebase, cognito
     - SERVER_URL
     - WEB_URL
-    - SYSTEM_ACCOUNT_EMAILS # a comma-separated list of emails
+    - SYSTEM_ADMIN_EMAILS # a comma-separated list of emails
   required[aws]:
     - AWS_COGNITO_USER_POOL_ID
     - AWS_COGNITO_CLIENT_ID
