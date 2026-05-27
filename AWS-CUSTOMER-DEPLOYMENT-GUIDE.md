@@ -50,7 +50,7 @@ kubectl create namespace workflows
 # 3. Create your values file (see Step 3 below)
 
 # 4. Install
-helm install workflows oci://public.ecr.aws/ensembleapp/workflows \
+helm install workflows oci://public.ecr.aws/ensembleapp/workflows/chart \
   -f my-values.yaml \
   -n workflows
 
@@ -306,7 +306,7 @@ worker:
 ## Step 4: Install Workflows
 
 ```bash
-helm install workflows oci://public.ecr.aws/ensembleapp/workflows \
+helm install workflows oci://public.ecr.aws/ensembleapp/workflows/chart \
   -f my-values.yaml \
   -n workflows
 ```
@@ -396,7 +396,7 @@ kubectl logs -f -l app.kubernetes.io/component=server -n workflows
 ## Upgrading
 
 ```bash
-helm upgrade workflows oci://public.ecr.aws/ensembleapp/workflows \
+helm upgrade workflows oci://public.ecr.aws/ensembleapp/workflows/chart \
   -f my-values.yaml \
   -n workflows
 ```

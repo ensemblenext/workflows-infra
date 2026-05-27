@@ -315,13 +315,28 @@ aws acm describe-certificate --certificate-arn $CERT_ARN --region $AWS_REGION \
 
 ## Step 9: Deploy Helm Chart
 
+**Option A: Install from local chart**
 ```bash
 helm install workflows infrastructure/helm/workflows \
   -f infrastructure/helm/workflows/eks-values.yaml \
   -n workflows \
   --set global.imageRegistry="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/" \
   --set ingress.tls.certificateArn="$CERT_ARN"
+```
 
+**Option B: Install from hosted chart (ECR)**
+
+> Note: Requires Helm ECR login first (see Quick Reference section)
+
+```bash
+helm install workflows oci://$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/workflows/chart \
+  -f infrastructure/helm/workflows/eks-values.yaml \
+  -n workflows \
+  --set global.imageRegistry="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/" \
+  --set ingress.tls.certificateArn="$CERT_ARN"
+```
+
+```bash
 # Watch deployment
 kubectl get pods -n workflows -w
 ```
@@ -357,15 +372,25 @@ curl $SERVICE_ENDPOINT/api/health
 After initial setup, use these commands for updates:
 
 ```bash
-# ECR login (expires every 12 hours)
+# ECR login for Docker (expires every 12 hours)
 aws ecr get-login-password --region $AWS_REGION | \
   docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+# ECR login for Helm (required for hosted chart)
+aws ecr get-login-password --region $AWS_REGION | \
+  helm registry login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Build and push
 docker compose build && docker compose push
 
-# Or upgrade with Helm
+# Upgrade with Helm (local chart)
 helm upgrade workflows infrastructure/helm/workflows \
+  -f infrastructure/helm/workflows/eks-values.yaml \
+  -n workflows \
+  --set global.imageRegistry="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/"
+
+# Or upgrade with Helm (hosted chart)
+helm upgrade workflows oci://$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/workflows/chart \
   -f infrastructure/helm/workflows/eks-values.yaml \
   -n workflows \
   --set global.imageRegistry="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/"
