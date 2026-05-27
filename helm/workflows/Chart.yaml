@@ -1,5 +1,5 @@
 apiVersion: v2
-name: workflows
+name: chart
 description: A multi-tenanted platform to build agents and workflows
 type: application
 version: 1.0.0
