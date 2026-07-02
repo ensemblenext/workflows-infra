@@ -175,3 +175,16 @@ output "service_account_annotation" {
     "eks.amazonaws.com/role-arn" = module.iam.workloads_role_arn
   }
 }
+
+# ============================================
+# ECR Outputs
+# ============================================
+output "ecr_repository_urls" {
+  description = "Map of ECR repository names to URLs"
+  value       = var.enable_ecr ? module.ecr[0].repository_urls : {}
+}
+
+output "ecr_registry_id" {
+  description = "ECR registry ID"
+  value       = var.enable_ecr ? module.ecr[0].registry_id : null
+}

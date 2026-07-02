@@ -1,3 +1,16 @@
+# ============================================
+# ECR Repositories
+# ============================================
+module "ecr" {
+  source = "./modules/ecr"
+  count  = var.enable_ecr ? 1 : 0
+
+  repository_prefix   = var.ecr_repository_prefix
+  image_count_to_keep = var.ecr_image_count_to_keep
+  scan_on_push        = var.ecr_scan_on_push
+  tags                = local.common_tags
+}
+
 # Local values
 locals {
   name_prefix = "${var.project_name}-${var.environment}"

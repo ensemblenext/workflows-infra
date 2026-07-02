@@ -64,10 +64,47 @@ aws sts get-caller-identity
 
 ## Step 2: Create ECR Repositories
 
+**Option A: Via Terraform (recommended)**
+
+Enable ECR in your tfvars file to create repositories with lifecycle policies (keeps last 15 images):
+
+```hcl
+# In environments/prod.tfvars
+enable_ecr = true
+ecr_repository_prefix = "workflows"
+ecr_image_count_to_keep = 15
+```
+
+Then run `terraform apply`. This creates repositories for: server, web, worker, migration, chart.
+
+**Option B: Via CLI**
+
 ```bash
-aws ecr create-repository --repository-name workflows/server --region $AWS_REGION
-aws ecr create-repository --repository-name workflows/web --region $AWS_REGION
-aws ecr create-repository --repository-name workflows/worker --region $AWS_REGION
+# Create repositories
+for repo in server web worker migration chart; do
+  aws ecr create-repository --repository-name workflows/$repo --region $AWS_REGION
+done
+
+# Add lifecycle policy to keep only last 8 'latest' tagged images
+# Versioned images (e.g., 1.2.3) are retained for rollback
+for repo in server web worker migration chart; do
+  aws ecr put-lifecycle-policy \
+    --repository-name workflows/$repo \
+    --region $AWS_REGION \
+    --lifecycle-policy-text '{
+      "rules": [{
+        "rulePriority": 1,
+        "description": "Keep last 8 latest tagged images",
+        "selection": {
+          "tagStatus": "tagged",
+          "tagPrefixList": ["latest"],
+          "countType": "imageCountMoreThan",
+          "countNumber": 8
+        },
+        "action": {"type": "expire"}
+      }]
+    }'
+done
 ```
 
 ## Step 3: Create EKS Cluster

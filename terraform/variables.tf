@@ -48,6 +48,31 @@ variable "enable_cognito" {
   default     = true
 }
 
+variable "enable_ecr" {
+  description = "Enable ECR repository creation with lifecycle policies"
+  type        = bool
+  default     = false
+}
+
+# ECR Configuration
+variable "ecr_repository_prefix" {
+  description = "Prefix for ECR repository names"
+  type        = string
+  default     = "workflows"
+}
+
+variable "ecr_image_count_to_keep" {
+  description = "Number of images to keep per ECR repository"
+  type        = number
+  default     = 8
+}
+
+variable "ecr_scan_on_push" {
+  description = "Enable image scanning on push to ECR"
+  type        = bool
+  default     = true
+}
+
 variable "enable_scheduler" {
   description = "Enable EventBridge Scheduler resources"
   type        = bool
