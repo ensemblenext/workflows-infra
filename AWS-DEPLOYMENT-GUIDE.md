@@ -745,6 +745,7 @@ curl http://localhost:3001/health
 
 ## Related Documentation
 
+- [AWS-DEPLOYMENT-REBUILD-GUIDE.md](./AWS-DEPLOYMENT-REBUILD-GUIDE.md) - Rebuild RDS, nodes, and secrets
 - [DEPLOY-EKS.md](./DEPLOY-EKS.md) - Detailed EKS deployment guide with troubleshooting
 - [Terraform README](terraform/README.md) - Infrastructure as code details
 - [CDK README](aws-cdk/README.md) - Alternative to Terraform
