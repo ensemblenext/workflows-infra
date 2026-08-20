@@ -33,7 +33,7 @@ spec:
       {{- end }}
       containers:
         - name: server
-          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           # workingDir defaults to Dockerfile WORKDIR (/app)
           ports:

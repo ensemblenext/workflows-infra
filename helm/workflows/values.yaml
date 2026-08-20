@@ -69,7 +69,9 @@ migrations:
   activeDeadlineSeconds: 600  # Maximum time for migration to complete (10 minutes)
   image:
     repository: workflows/migration
-    tag: latest
+    # Empty = follow the chart's appVersion (e.g. "latest" chart -> latest image,
+    # "1.0.42" chart -> 1.0.42 image). Set explicitly only to pin a specific tag.
+    tag: ""
     pullPolicy: Always
 
 # License configuration (AWS Marketplace)
@@ -89,7 +91,8 @@ web:
   replicaCount: 1
   image:
     repository: workflows/web
-    tag: "1.0.0"
+    # Empty = follow the chart's appVersion. See the migration image note above.
+    tag: ""
     pullPolicy: Always
   resources:
     requests:
@@ -140,7 +143,8 @@ server:
   replicaCount: 1
   image:
     repository: workflows/server
-    tag: "1.0.0"
+    # Empty = follow the chart's appVersion. See the migration image note above.
+    tag: ""
     pullPolicy: Always
   resources:
     requests:
@@ -191,7 +195,8 @@ worker:
   replicaCount: 1
   image:
     repository: workflows/worker
-    tag: "1.0.0"
+    # Empty = follow the chart's appVersion. See the migration image note above.
+    tag: ""
     pullPolicy: Always
   resources:
     requests:
