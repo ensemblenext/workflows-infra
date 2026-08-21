@@ -1,0 +1,20 @@
+# Terraform working dirs / plugins
+.terraform/
+.terraform.tfstate.lock.info
+
+# State must NEVER be committed (may contain secrets). Use the GCS backend.
+*.tfstate
+*.tfstate.*
+
+# Local overrides / crash logs
+*.tfvars.local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# Keep committed:
+#   .terraform.lock.hcl  (pins provider versions)
+#   environments/*.tfvars (non-secret config only)

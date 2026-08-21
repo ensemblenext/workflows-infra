@@ -33,7 +33,7 @@ spec:
       {{- end }}
       containers:
         - name: server
-          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           # workingDir defaults to Dockerfile WORKDIR (/app)
           ports:
@@ -53,14 +53,20 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
+          # Readiness gates traffic, so it must wait for the dependencies the
+          # server cannot serve without — /health answers 200 as soon as Express
+          # binds, which marked pods Ready before Temporal had connected.
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: {{ .Values.server.service.targetPort }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          # Liveness stays on /health, which is dependency-free by design: a
+          # failure here restarts the pod, so probing dependencies would turn a
+          # degraded backend into a restart loop across every replica.
           livenessProbe:
             httpGet:
               path: /health

@@ -62,7 +62,7 @@ variable "ecr_repository_prefix" {
 }
 
 variable "ecr_image_count_to_keep" {
-  description = "Number of images to keep per ECR repository"
+  description = "Number of 'latest'/'-dev' (non-release) images to keep per ECR repository. Immutable release tags (e.g. 1.1.<build>) are never expired."
   type        = number
   default     = 8
 }

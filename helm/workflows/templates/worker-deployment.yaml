@@ -34,7 +34,7 @@ spec:
       {{- end }}
       containers:
         - name: worker
-          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          image: "{{ include "workflows.imageRegistry" . }}{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           {{- with .Values.worker.envFrom }}
           envFrom:

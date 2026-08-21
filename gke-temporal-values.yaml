@@ -1,0 +1,62 @@
+# Values for the Temporal Helm chart at infrastructure/temporalio/charts/temporal
+# (chart v1.6.0, appVersion 1.31.2), using the existing Cloud SQL Postgres over
+# its private IP. Modeled on the chart's own ci/postgres-values.yaml.
+#
+# This chart version has NO cassandra/elasticsearch/prometheus enable toggles —
+# the datastore driver is selected by which key (sql:) is present. Postgres
+# advanced visibility is used (no Elasticsearch).
+#
+# Prereq — password secret (reuse the one from before, or create it):
+#   kubectl create secret generic temporal-db -n workflows \
+#     --from-literal=POSTGRES_PWD='<app-user-password>'
+#
+# Install — release name MUST be "temporal" so the frontend Service is
+# "temporal-frontend", which the app's TEMPORAL_HOST already points at:
+#   helm install temporal infrastructure/temporalio/charts/temporal -n workflows \
+#     -f infrastructure/gke-temporal-values.yaml
+#
+# The DB user (app) needs CREATEDB so the schema Job can create/own the temporal
+# databases (Cloud SQL grants this to users you create).
+
+server:
+  replicaCount: 1
+  config:
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: 512 # cannot be changed after the initial deployment
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12 # Postgres 12+ (works for PG18)
+            databaseName: temporal
+            connectAddr: "10.108.0.3:5432" # Cloud SQL private IP
+            connectProtocol: "tcp"
+            user: postgres
+            existingSecret: temporal-db # password pulled from this secret
+            secretKey: POSTGRES_PWD
+            createDatabase: true # schema Job creates the database
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        visibility:
+          sql:
+            pluginName: postgres12
+            databaseName: temporal_visibility
+            connectAddr: "10.108.0.3:5432"
+            connectProtocol: "tcp"
+            user: postgres
+            existingSecret: temporal-db
+            secretKey: POSTGRES_PWD
+            createDatabase: true
+            maxConns: 10
+            maxIdleConns: 10
+            maxConnLifetime: "1h"
+    namespaces:
+      create: true
+      namespace:
+        - name: default # matches the app's TEMPORAL_NAMESPACE
+          retention: 3d
+
+# Web UI (temporalio/ui) is enabled by default in this chart. Reach it via:
+#   kubectl port-forward svc/temporal-web 8233:8080 -n workflows
