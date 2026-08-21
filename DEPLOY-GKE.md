@@ -86,6 +86,16 @@ gcloud container clusters create workflows-cluster \
 gcloud container clusters get-credentials workflows-cluster --region=$REGION
 ```
 
+> **Targeting GKE with kubectl/helm.** These tools act on the `current-context` in
+> your kubeconfig (`~/.kube/config`), which is **persisted to disk and shared across
+> all shells** until you change it (not per-terminal). If it is left on an **EKS**
+> cluster, GCP commands hit the wrong cluster; if it is on GKE but your gcloud token
+> expired you will see `Reauthentication failed` (run `gcloud auth login`). The
+> `get-credentials` command above refreshes auth and sets GKE as current-context;
+> re-select it later with `kubectl config use-context gke_${PROJECT_ID}_${REGION}_workflows-cluster`
+> and verify with `kubectl config current-context`. Use `--kube-context` (helm) or
+> `--context` (kubectl) to target it for a single command without switching globally.
+
 ## Step 3: Set Up Container Registry
 
 ```bash

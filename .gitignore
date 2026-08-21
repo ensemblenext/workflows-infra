@@ -13,6 +13,8 @@ node_modules/
 helm/workflows/*.local.yaml
 helm/workflows/eks-values.yaml
 helm/workflows/gke-values.yaml
+helm/workflows/gcp-values.yaml
+helm/workflows/gke-test-values.yaml
 
 # Terraform
 .terraform/

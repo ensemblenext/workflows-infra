@@ -40,6 +40,30 @@ For end-to-end guides:
 - [AWS deployment guide](AWS-DEPLOYMENT-GUIDE.md)
 - [AWS customer deployment guide](AWS-CUSTOMER-DEPLOYMENT-GUIDE.md)
 
+## Selecting the target cluster (AWS vs GCP)
+
+`kubectl` and `helm` have no notion of cloud provider. They act on the
+`current-context` in your kubeconfig (`~/.kube/config`), which is **persisted to
+disk and shared across all shells** until you change it (not per-terminal). If a
+single machine has both EKS and GKE contexts, set the right one before running any
+guide:
+
+```bash
+kubectl config get-contexts        # list all clusters (EKS + GKE)
+kubectl config current-context     # which one is active now
+
+# AWS / EKS:
+aws eks update-kubeconfig --name <CLUSTER_NAME> --region <AWS_REGION> [--profile <p>]
+# GCP / GKE:
+gcloud container clusters get-credentials <CLUSTER_NAME> --region <REGION> --project <PROJECT>
+```
+
+Symptom of a mismatch: with the context on **GKE**, AWS commands fail trying to use
+gcloud auth (`failure while executing gcloud ... Reauthentication failed`); with the
+context on **EKS**, GCP-targeted commands hit the wrong cluster. Use `--kube-context`
+(helm) or `--context` (kubectl) to target a cluster for one command without switching
+globally.
+
 ## What Gets Provisioned
 
 The Terraform and CDK implementations are intended to create supporting AWS resources, not the EKS cluster itself.

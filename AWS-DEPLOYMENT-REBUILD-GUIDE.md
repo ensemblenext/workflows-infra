@@ -201,6 +201,17 @@ aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
 kubectl get nodes
 ```
 
+> **Targeting EKS with kubectl/helm.** These tools act on the `current-context` in
+> your kubeconfig (`~/.kube/config`), which is **persisted to disk and shared across
+> all shells** until you change it (not per-terminal). If it is left on a **GKE**
+> cluster, AWS commands fail trying to use gcloud auth
+> (`failure while executing gcloud ... Reauthentication failed`). The
+> `aws eks update-kubeconfig` command above both refreshes auth and sets EKS as
+> current-context; select it later with
+> `kubectl config use-context "arn:aws:eks:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/${CLUSTER_NAME}"`
+> and verify with `kubectl config current-context`. Use `--kube-context` (helm) or
+> `--context` (kubectl) to target it for a single command without switching globally.
+
 ## Deploy Application
 
 ### Force Sync Secrets
