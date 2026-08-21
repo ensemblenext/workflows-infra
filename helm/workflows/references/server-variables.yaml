@@ -12,6 +12,7 @@ environments:
     - STORAGE_USER_FILES_BUCKET
     - STORAGE_DOCUMENTS_BUCKET
     - STORAGE_TENANT_MIGRATIONS_BUCKET
+    - STORAGE_EXPORTS_BUCKET # for the export feature
     - KMS_SECRETS_KEYRING
     - KMS_SECRETS_KEY
     - KMS_CONNECTIONS_KEYRING
@@ -40,6 +41,7 @@ environments:
     - FIREBASE_APP_ID
     - FIREBASE_MEASUREMENT_ID
   optional:
+    - LOG_LEVEL # trace|debug|info|warn|error|fatal (default: info). debug is very verbose on hot paths.
     - SELF_HOSTING # Enable self-hosting mode: restricts tenant deletion to superuser only (default: false)
     - TEMPORAL_HOST
     - TEMPORAL_NAMESPACE
@@ -47,6 +49,13 @@ environments:
     - TEMPORAL_TLS # true, false
     - TEMPORAL_TLS_CA # CA certificate path (mTLS)
     - TEMPORAL_TLS_CERT # Client certificate path (mTLS)
+    # Redis (enables the centralized cache store: cross-instance AI rate limiting
+    # and environment-change cache invalidation). Active only when REDIS_HOST is
+    # set AND SERVERLESS_ENVIRONMENT=false; otherwise an in-memory per-instance store is used.
+    - REDIS_HOST
+    - REDIS_PORT # default: 6379
+    - REDIS_TLS # true, false (default: false)
+    - REDIS_USERNAME # Redis 6+ ACL user; leave unset to auth as the default user
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
     # Vector Embedding
     - VECTOR_EMBEDDING_PROVIDER # openai, azure, bedrock (default: openai)
@@ -92,5 +101,7 @@ secrets:
     - SENDGRID_API_KEY
     # Vector Embedding
     - VECTOR_EMBEDDING_API_KEY # API key for OpenAI/Azure embeddings (falls back to OPENAI_API_KEY)
+    # Redis
+    - REDIS_PASSWORD # only if the Redis instance requires auth
   
   

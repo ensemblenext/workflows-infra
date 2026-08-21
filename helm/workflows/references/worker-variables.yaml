@@ -21,12 +21,20 @@ environments:
     - GCP_SERVICE_ACCOUNT
     - KMS_LOCATION_ID
   optional:
+    - LOG_LEVEL # trace|debug|info|warn|error|fatal (default: info). debug is very verbose on hot paths.
     - TEMPORAL_HOST
     - TEMPORAL_NAMESPACE
     - TEMPORAL_TASK_QUEUE
     - TEMPORAL_TLS # true, false
     - TEMPORAL_TLS_CA # CA certificate path (mTLS)
     - TEMPORAL_TLS_CERT # Client certificate path (mTLS)
+    # Redis (centralized cache store for environment-change cache invalidation
+    # during tool execution). Active only when REDIS_HOST is set AND
+    # SERVERLESS_ENVIRONMENT=false; otherwise an in-memory per-instance store is used.
+    - REDIS_HOST
+    - REDIS_PORT # default: 6379
+    - REDIS_TLS # true, false (default: false)
+    - REDIS_USERNAME # Redis 6+ ACL user; leave unset to auth as the default user
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
 
 secrets:
@@ -64,4 +72,6 @@ secrets:
     # Email service
     - RESEND_API_KEY
     - SENDGRID_API_KEY
-  
+    # Redis
+    - REDIS_PASSWORD # only if the Redis instance requires auth
+

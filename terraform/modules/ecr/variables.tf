@@ -5,7 +5,7 @@ variable "repository_prefix" {
 }
 
 variable "image_count_to_keep" {
-  description = "Number of images to keep per repository"
+  description = "Number of 'latest'/'-dev' (non-release) images to keep per repository. Immutable release tags (e.g. 1.1.<build>) are never expired."
   type        = number
   default     = 8
 }

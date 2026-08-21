@@ -13,11 +13,11 @@ aws ecr get-login-password --region us-west-2 --profile ensemble | \
 # Build and push all services (reads .env automatically)
 docker compose build && docker compose push
 
-# Deploy/upgrade with Helm (source .env for ECR_REGISTRY)
+# Deploy/upgrade with Helm (source .env for IMAGE_REGISTRY)
 source .env && helm upgrade --install workflows helm/workflows \
   -f helm/workflows/eks-values.yaml \
   -n workflows \
-  --set global.imageRegistry="$ECR_REGISTRY/"
+  --set global.imageRegistry="$IMAGE_REGISTRY/"
 
 # Restart deployments to pull new images
 kubectl rollout restart deployment -n workflows
@@ -227,7 +227,7 @@ Docker Compose auto-loads variables from `.env` in the project root. Create this
 
 ```bash
 # .env
-ECR_REGISTRY=123456789.dkr.ecr.us-west-2.amazonaws.com
+IMAGE_REGISTRY=123456789.dkr.ecr.us-west-2.amazonaws.com
 TAG=latest
 ```
 
@@ -433,7 +433,7 @@ If you've changed Helm values (eks-values.yaml), use Helm upgrade:
 source .env && helm upgrade workflows helm/workflows \
   -f helm/workflows/eks-values.yaml \
   -n workflows \
-  --set global.imageRegistry="$ECR_REGISTRY/"
+  --set global.imageRegistry="$IMAGE_REGISTRY/"
 
 # Monitor the rollout
 kubectl rollout status deployment/workflows-server -n workflows
@@ -562,7 +562,7 @@ on:
 env:
   AWS_REGION: us-west-2
   CLUSTER_NAME: workflows-prod
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
+  IMAGE_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
 
 jobs:
   deploy:
@@ -584,7 +584,7 @@ jobs:
 
       - name: Build and push images
         env:
-          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com/
+          IMAGE_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com/
           TAG: ${{ github.sha }}
         run: |
           docker compose build && docker compose push
@@ -1007,6 +1007,38 @@ aws eks update-kubeconfig --name workflows-prod-eu-west-1 --region eu-west-1 --p
 kubectl config use-context eks-us-west-2
 kubectl config use-context eks-eu-west-1
 ```
+
+### Switching between AWS (EKS) and GCP (GKE)
+
+`kubectl` and `helm` have no notion of cloud provider. They act on whatever
+`current-context` is set in your kubeconfig (`~/.kube/config`). That selection is
+**persisted to disk and shared by every shell**, so it stays put until you change
+it again (not just for the current terminal).
+
+If your context is left on a **GKE** cluster, AWS-targeted commands fail while
+trying to use gcloud auth, for example:
+
+```
+print credential failed ... failure while executing gcloud ...
+Reauthentication failed. cannot prompt during non-interactive execution.
+```
+
+Point kubectl/helm back at EKS before running anything in this guide:
+
+```bash
+# Refresh and select the EKS context (also sets it as current-context):
+aws eks update-kubeconfig --name workflows-prod --region us-west-2 --profile ensemble
+
+# Or, if the context already exists, just select it:
+kubectl config use-context arn:aws:eks:us-west-2:<ACCOUNT_ID>:cluster/workflows-prod
+
+# Verify (should print the arn:aws:eks... context and reach the cluster):
+kubectl config current-context
+kubectl get nodes
+```
+
+To target EKS for a single command without changing the global context, pass
+`--kube-context <eks-context>` to helm or `--context <eks-context>` to kubectl.
 
 ### Database Considerations
 

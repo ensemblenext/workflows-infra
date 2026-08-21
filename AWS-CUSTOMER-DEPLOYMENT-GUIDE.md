@@ -41,6 +41,16 @@ See `terraform/README.md` for full details.
 
 ## Quick Start
 
+> **Targeting EKS with kubectl/helm.** These tools act on the `current-context` in
+> your kubeconfig (`~/.kube/config`), which is **persisted to disk and shared across
+> all shells** until you change it (not per-terminal). Point it at your EKS cluster
+> first with `aws eks update-kubeconfig --name <CLUSTER_NAME> --region <AWS_REGION> [--profile <p>]`
+> and verify with `kubectl config current-context`. If it is left on a **GKE**
+> cluster, AWS commands fail trying to use gcloud auth
+> (`failure while executing gcloud ... Reauthentication failed`). Use `--kube-context`
+> (helm) or `--context` (kubectl) to target it for a single command without switching
+> globally.
+
 ```bash
 # 1. Create namespace
 kubectl create namespace workflows

@@ -22,16 +22,38 @@ resource "aws_ecr_lifecycle_policy" "repos" {
 
   repository = each.value.name
 
+  # Retention model (applied uniformly to all repos; each rule is a no-op where
+  # it does not apply):
+  #   - Immutable release tags "1.1.<build>" are matched by NO rule, so they are
+  #     kept forever.
+  #   - Helm dev charts "1.1.<build>-dev" stay tagged after "latest" moves off
+  #     them, so rule 1 prunes them by the "-dev" suffix (tagPatternList) to the
+  #     last N. (Only the chart repo has these; no-op elsewhere.)
+  #   - Superseded "latest" IMAGE builds lose their only tag and become
+  #     untagged, so rule 2 prunes them to the last N. (Image repos; the chart
+  #     repo keeps its "-dev" tag so it has ~no untagged images.)
   policy = jsonencode({
     rules = [
       {
         rulePriority = 1
-        description  = "Keep only the last ${var.image_count_to_keep} 'latest' tagged images"
+        description  = "Keep only the last ${var.image_count_to_keep} pre-release '-dev' images (Helm dev charts); tagged releases match no rule and are kept forever"
         selection = {
-          tagStatus     = "tagged"
-          tagPrefixList = ["latest"]
-          countType     = "imageCountMoreThan"
-          countNumber   = var.image_count_to_keep
+          tagStatus      = "tagged"
+          tagPatternList = ["*-dev"]
+          countType      = "imageCountMoreThan"
+          countNumber    = var.image_count_to_keep
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only the last ${var.image_count_to_keep} untagged images (superseded 'latest' builds)"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "imageCountMoreThan"
+          countNumber = var.image_count_to_keep
         }
         action = {
           type = "expire"

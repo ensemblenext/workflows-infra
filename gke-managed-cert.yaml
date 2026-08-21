@@ -1,0 +1,31 @@
+# Google-managed TLS certificate for the GKE (gce) ingress.
+# Apply BEFORE (or alongside) enabling the ingress:
+#   kubectl apply -f infrastructure/gke-managed-cert.yaml
+# The cert only reaches Status: Active after DNS for the host resolves to the
+# ingress load balancer IP and the LB is serving (typically 15-60 min).
+#   kubectl describe managedcertificate workflows-cert -n workflows
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: workflows-cert
+  namespace: workflows
+spec:
+  domains:
+    - prospertech.ensembleapp.ai # Replace with your domain (must match ingress host)
+---
+# Second ingress host. spec.domains is immutable once a ManagedCertificate
+# exists, so a rename is a new object rather than an edit — this replaces the
+# earlier vertx-cert (vertx.gigh.com), which can be deleted once this is Active.
+#
+# A cert only leaves Provisioning after BOTH the ingress references it (via the
+# networking.gke.io/managed-certificates annotation) and the domain's A record
+# resolves to the ingress IP. vertx-cert sat in Provisioning for 12 days because
+# a manual ingress edit removed its reference.
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: vertxai-cert
+  namespace: workflows
+spec:
+  domains:
+    - vertxai.io
