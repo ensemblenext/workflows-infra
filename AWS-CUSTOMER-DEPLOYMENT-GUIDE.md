@@ -269,6 +269,27 @@ serviceAccount:
   create: false  # Use the one created by Terraform/eksctl
   name: workflows-sa
 
+# Pod annotations. Set once here and every pod the chart creates gets them
+# (server, web, worker, and the migration job) - useful for Prometheus scraping,
+# Vault agent injection, service-mesh sidecars, and similar.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3001"
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/role: "workflows"
+
+# Any component can override a single key without restating the shared set.
+# Here web scrapes a different port and the worker opts out of scraping, while
+# both keep the Vault annotations above.
+web:
+  podAnnotations:
+    prometheus.io/port: "3000"
+worker:
+  podAnnotations:
+    prometheus.io/scrape: "false"
+
+# Note: annotations live on the pod template, so changing them rolls the pods.
+
 # Resource allocation (adjust based on your needs)
 server:
   replicaCount: 2

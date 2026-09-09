@@ -66,6 +66,8 @@ global:
 # Database migrations
 migrations:
   enabled: true  # Set to false to skip migrations during helm upgrade
+  # Merged over the chart-wide podAnnotations above; these win on conflict.
+  podAnnotations: {}
   activeDeadlineSeconds: 600  # Maximum time for migration to complete (10 minutes)
   image:
     repository: workflows/migration
@@ -82,6 +84,8 @@ license:
 # Web frontend
 web:
   enabled: true
+  # Merged over the chart-wide podAnnotations above; these win on conflict.
+  podAnnotations: {}
   # envFrom sources for web pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
   envFrom: []
     # - secretRef:
@@ -136,6 +140,8 @@ web:
 # API Server
 server:
   enabled: true
+  # Merged over the chart-wide podAnnotations above; these win on conflict.
+  podAnnotations: {}
   # envFrom sources for server pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
   envFrom: []
     # - secretRef:
@@ -188,6 +194,8 @@ server:
 # Background Worker
 worker:
   enabled: true
+  # Merged over the chart-wide podAnnotations above; these win on conflict.
+  podAnnotations: {}
   # envFrom sources for worker pods (secrets/configmaps managed externally, e.g., by Doppler Operator)
   envFrom: []
     # - secretRef:
@@ -353,6 +361,16 @@ serviceAccount:
     # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/workflows-prod-workloads-role
 
 # Pod Security
+# Annotations added to every pod the chart creates (server, web, worker, and the
+# migration job). Per-component overrides live under `<component>.podAnnotations`
+# and win on conflict.
+#
+# podAnnotations:
+#   prometheus.io/scrape: "true"
+#   prometheus.io/port: "3001"
+#   vault.hashicorp.com/agent-inject: "true"
+podAnnotations: {}
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000

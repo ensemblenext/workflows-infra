@@ -431,7 +431,7 @@ gcloud compute backend-services get-health <backend-name> --global
 
 ### Certificate issues
 ```bash
-kubectl describe managedcertificate workflows-cert -n workflows
+kubectl describe managedcertificate vertxai-cert -n workflows
 # Certificate provisioning can take up to 60 minutes
 ```
 

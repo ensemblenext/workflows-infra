@@ -77,3 +77,28 @@ postgresql://{{ .Values.database.external.username }}:$(DATABASE_PASSWORD)@{{ .V
 {{- end }}
 {{- end }}
 
+{{/*
+Pod annotations for one workload.
+
+Merges chart-wide `.Values.podAnnotations` with a component's own
+`.Values.<component>.podAnnotations`, the component winning on conflict — so a
+deployment can override a single key (a different Prometheus port, say) without
+restating the shared set.
+
+Usage:
+  {{- with (include "workflows.podAnnotations" (dict "root" $ "component" .Values.server.podAnnotations)) }}
+  annotations:
+    {{- . | nindent 8 }}
+  {{- end }}
+
+Renders nothing when both are empty, so the `annotations:` key is omitted
+entirely rather than emitted as null.
+*/}}
+{{- define "workflows.podAnnotations" -}}
+{{- $global := .root.Values.podAnnotations | default dict -}}
+{{- $component := .component | default dict -}}
+{{- $merged := merge (deepCopy $component) $global -}}
+{{- with $merged }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}

@@ -20,6 +20,10 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
+      {{- with (include "workflows.podAnnotations" (dict "root" $ "component" .Values.server.podAnnotations)) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "workflows.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: server
