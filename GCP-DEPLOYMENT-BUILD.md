@@ -1,14 +1,23 @@
-# GCP Deployment Quick Guide (Helm-only, cross-project)
+# GCP Deployment — Build & Provision (Helm-only, cross-project)
 
-A fast path to deploy the platform to GKE **without Terraform**, using only the
-Helm chart. Cross-project layout:
+Everything you do **once** (or whenever the code changes): create the cloud
+resources the chart expects, and build and publish the images.
+
+Deploying the chart itself lives in
+[GCP-DEPLOYMENT-QUICK-GUIDE.md](./GCP-DEPLOYMENT-QUICK-GUIDE.md). Work through
+this document first — the quick guide assumes the cluster exists, the images are
+pushed, and (for anything touching files or encryption) the buckets, keys and
+service account are in place.
+
+This is the **no-Terraform** path, meant for testing. For production use the full
+[GCP-DEPLOYMENT-GUIDE.md](./GCP-DEPLOYMENT-GUIDE.md) + Terraform, which
+provisions all of the below reproducibly and emits the exact values the chart
+consumes.
+
+Cross-project layout:
 
 - **Images** live in the **`ensemble-workflows`** project (Artifact Registry).
 - **The cluster and everything at runtime** live in the **`automator-502518`** project.
-
-You create the few resources the chart needs by hand (instead of Terraform). This
-is meant for testing; for production use the full
-[GCP-DEPLOYMENT-GUIDE.md](./GCP-DEPLOYMENT-GUIDE.md) + Terraform.
 
 ```
 images: ensemble-workflows (Artifact Registry)
@@ -53,22 +62,6 @@ gcloud container clusters get-credentials $CLUSTER_NAME --region $REGION --proje
 kubectl get nodes
 ```
 
-> **kubectl/helm target one cluster at a time.** They act on the `current-context`
-> in your kubeconfig (`~/.kube/config`), which is **persisted to disk and shared
-> across all shells** until you change it (not per-terminal). If it is left on an
-> **EKS** cluster, GCP-targeted commands hit the wrong cluster; if it is on GKE but
-> your gcloud token expired you will see `Reauthentication failed` (run
-> `gcloud auth login`). The `get-credentials` command above both refreshes auth and
-> sets GKE as the current context. To re-select it later without re-fetching:
->
-> ```bash
-> kubectl config use-context gke_${DEPLOY_PROJECT}_${REGION}_${CLUSTER_NAME}
-> kubectl config current-context   # verify
-> ```
->
-> Run a one-off command against GKE without switching globally with
-> `kubectl --context <gke-context> ...` or `helm --kube-context <gke-context> ...`.
-
 ## Step 3: Images in ensemble-workflows + cross-project pull grant
 
 ```bash
@@ -95,16 +88,32 @@ gcloud artifacts repositories add-iam-policy-binding workflows \
   --role="roles/artifactregistry.reader"
 ```
 
-## Step 4: Namespace + secrets (direct k8s Secret, no Secret Manager)
+Re-run **3a** (build + push) whenever the code changes. The grant in 3b is
+one-time.
 
-The chart mounts a k8s Secret named `app-secrets` (via `envFrom`), so the Secret
-**must be named `app-secrets`** in the `workflows` namespace.
+## Step 4: Firebase / Identity Platform
+
+Enable it once in the console (Console → Identity Platform → **Enable**) and
+register a web app. That gives you `FIREBASE_API_KEY` / `MESSAGING_SENDER_ID` /
+`APP_ID`, which fill the `web.config` fields marked
+`REPLACE_FROM_FIREBASE_WEB_APP` in `gke-test-values.yaml`.
+
+Server-side credentials are covered in Step 5 — the short version is that
+Workload Identity (Step 6) is preferred over an explicit key.
+
+## Step 5: Namespace + secrets
+
+The deployer running the quick guide does **not** create these. Everything the
+chart reads at runtime has to exist before they run `helm install`.
 
 ```bash
 kubectl create namespace workflows
 ```
 
-### 4a. Required secrets
+The chart mounts a k8s Secret named `app-secrets` (via `envFrom`), so the Secret
+**must be named `app-secrets`** in the `workflows` namespace.
+
+### 5.1 Required secrets
 
 The minimum to boot: `PG_BASE_URL` (the checkpoint-saver init is critical and
 needs your Neon DB; the pre-install migration Job also needs it) and
@@ -118,7 +127,11 @@ kubectl create secret generic app-secrets -n workflows \
   --from-literal=ANTHROPIC_API_KEY='...'
 ```
 
-### 4b. Firebase Admin credentials (usually NOT needed here)
+> `OPENAI_API_KEY` is not optional if you use knowledge bases — embeddings are a
+> separate credential from the chat models, and ingestion fails without it even
+> when every LLM is configured.
+
+### 5.2 Firebase Admin credentials (usually NOT needed)
 
 The server verifies Firebase ID tokens with the Firebase Admin SDK, but it
 **falls back to Application Default Credentials (ADC)** when the explicit vars
@@ -126,7 +139,7 @@ aren't set (`apps/server/src/firebase.ts`). On GKE that ADC comes from the
 workload's service account, so:
 
 - **Recommended:** leave `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` **out**
-  of the Secret and rely on **Workload Identity** (Step 7). The workloads SA needs
+  of the Secret and rely on **Workload Identity** (Step 6). The workloads SA needs
   the `roles/firebaseauth.admin` (or `roles/firebase.sdkAdminServiceAgent`) role
   on the Firebase project. This is the "✅ Firebase Admin initialized with
   Application Default Credentials" path.
@@ -149,7 +162,7 @@ workload's service account, so:
   rm fb_key.txt
   ```
 
-### 4c. Updating the Secret later
+### 5.3 Updating the Secret later
 
 `kubectl create secret` fails if it already exists. To change a value, re-apply:
 
@@ -162,45 +175,15 @@ kubectl rollout restart deployment -n workflows   # pods pick up changes on rest
 ```
 
 > **Note:** the `app-secrets` Secret is mounted with `envFrom`, so pods only read
-> it at start. After any change, `kubectl rollout restart` is required.
+> it at start. After any change, `kubectl rollout restart` is required — a
+> `helm upgrade` alone will not pick it up.
 
-## Step 5: Deploy with Helm
+## Step 6: Storage + encryption + Workload Identity
 
-```bash
-helm install workflows infrastructure/helm/workflows \
-  -f infrastructure/helm/workflows/gke-test-values.yaml \
-  -n workflows
-
-kubectl get pods -n workflows -w   # a migration Job runs first
-```
-
-The `gke-test-values.yaml` is self-contained: image registry points at
-`ensemble-workflows`, External Secrets is off, ingress is off (you port-forward),
-and all runtime config targets `automator-502518`.
-
-## Step 6: Verify (via port-forward, no ingress)
-
-```bash
-kubectl port-forward deploy/workflows-server 3001:3001 -n workflows &
-kubectl port-forward deploy/workflows-web    3000:3000 -n workflows &
-
-curl http://localhost:3001/health     # expect 200
-open http://localhost:3000            # web app
-```
-
-Logs / status if something's off:
-
-```bash
-kubectl get pods -n workflows
-kubectl logs -f deploy/workflows-server -n workflows
-kubectl describe pod <pod> -n workflows | grep -A10 Events
-```
-
-## Step 7 (deferred): storage + encryption + Workload Identity
-
-The app boots and serves `/health` without these, but any feature that touches
-**file storage** or **secret/connection/env encryption** will error until you
-create the GCS buckets + KMS keys and wire Workload Identity. When you're ready:
+The app boots and serves `/health` without these, so you can defer them and come
+back. But any feature that touches **file storage** or
+**secret/connection/environment encryption** errors until the buckets, keys and
+Workload Identity binding exist.
 
 ```bash
 # --- GCS buckets (deploy project) ---
@@ -243,8 +226,8 @@ gcloud iam service-accounts add-iam-policy-binding $WORKLOADS_SA \
   --member="serviceAccount:$DEPLOY_PROJECT.svc.id.goog[workflows/workflows-sa]"
 ```
 
-Then **uncomment the `serviceAccount.annotations` block** in
-`gke-test-values.yaml`:
+Creating the binding is only half of it — the chart also has to *claim* it.
+**Uncomment the `serviceAccount.annotations` block** in `gke-test-values.yaml`:
 
 ```yaml
 serviceAccount:
@@ -254,7 +237,8 @@ serviceAccount:
     iam.gke.io/gcp-service-account: workflows-workloads@automator-502518.iam.gserviceaccount.com
 ```
 
-and roll it out:
+Commit that change so the deployer picks it up. If the chart is already
+installed, roll it out:
 
 ```bash
 helm upgrade workflows infrastructure/helm/workflows \
@@ -262,35 +246,43 @@ helm upgrade workflows infrastructure/helm/workflows \
 kubectl rollout restart deployment -n workflows
 ```
 
-## Step 8 (optional): Self-host Temporal (Helm)
+Until this is done, file storage and secret/connection/environment encryption
+error at runtime even though the pods are healthy and `/health` returns 200.
+
+## Step 7 (optional): Self-host Temporal (Helm)
 
 Run Temporal in the cluster instead of Temporal Cloud, backed by the same
 Cloud SQL Postgres. Uses the official chart (`temporalio/helm-charts`); the
 values live in `infrastructure/gke-temporal-values.yaml`.
 
+This is a backing service the app depends on, so it belongs here rather than with
+the app deploy — install it before (or alongside) the chart.
+
 ```bash
-# 8a. Password secret (key POSTGRES_PWD must match the DB user the values use)
+# 7a. Password secret (key POSTGRES_PWD must match the DB user the values use)
 kubectl create secret generic temporal-db -n workflows \
   --from-literal=POSTGRES_PWD='<db-user-password>'
 
-# 8b. Get the chart (v1.6.0+ tested) and install. Release name MUST be "temporal"
+# 7b. Get the chart (v1.6.0+ tested) and install. Release name MUST be "temporal"
 #     so the frontend Service is "temporal-frontend".
 git clone https://github.com/temporalio/helm-charts.git infrastructure/temporalio
 helm install temporal infrastructure/temporalio/charts/temporal -n workflows \
   -f infrastructure/gke-temporal-values.yaml --timeout 8m
 
-# 8c. Register the custom search attributes the app uses (the chart makes the
+# 7c. Register the custom search attributes the app uses (the chart makes the
 #     namespace but not these). Without them, StartWorkflow is rejected.
 kubectl exec -n workflows deploy/temporal-admintools -- sh -c '
   temporal operator search-attribute create --namespace default --name TenantId --type Keyword
   temporal operator search-attribute create --namespace default --name UserId --type Keyword'
+```
 
-# 8d. Point the app at it (already set in gke-test-values.yaml):
-#       TEMPORAL_HOST: temporal-frontend:7233
-#       TEMPORAL_TLS: "false"            # in-cluster plaintext; no API key
-#     Then re-deploy:
-helm upgrade workflows infrastructure/helm/workflows \
-  -f infrastructure/helm/workflows/gke-test-values.yaml -n workflows
+> The `workflows` namespace must already exist (Step 5).
+
+Point the app at it (already set in `gke-test-values.yaml`):
+
+```yaml
+TEMPORAL_HOST: temporal-frontend:7233
+TEMPORAL_TLS: "false" # in-cluster plaintext; no API key
 ```
 
 Gotchas we hit (all reflected in the values / wiring):
@@ -316,17 +308,36 @@ Gotchas we hit (all reflected in the values / wiring):
 
 Temporal Web UI: `kubectl port-forward svc/temporal-web 8233:8080 -n workflows`.
 
-## Notes
+## What this guide does not provision
 
-- **Firebase / Identity Platform:** enable it once in the console
-  (Console → Identity Platform → Enable) and register a web app to get
-  `FIREBASE_API_KEY` / `MESSAGING_SENDER_ID` / `APP_ID` for the `web.config`
-  fields marked `REPLACE_FROM_FIREBASE_WEB_APP`.
 - **Postgres** and **Temporal** are external by default (Neon + Temporal Cloud);
-  only their creds go in the `app-secrets` secret. To self-host instead, use
-  Cloud SQL (private IP) for Postgres and Step 8 for Temporal.
-- **Cleanup:** since there's no Terraform state, delete by hand:
-  `helm uninstall workflows -n workflows`, then the cluster / buckets / keys /
-  SA / AR repo you created.
-- **Going to prod:** switch to the full guide + Terraform, which provisions all
-  of the above reproducibly and emits the exact values the chart consumes.
+  only their credentials go into the `app-secrets` Secret at deploy time. To
+  self-host instead, use Cloud SQL (private IP) for Postgres and Step 7 for
+  Temporal.
+
+## Cleanup
+
+There is no Terraform state, so delete by hand. Remove the app first
+(`helm uninstall workflows -n workflows`), then the resources created here:
+
+```bash
+gcloud container clusters delete $CLUSTER_NAME --region $REGION --project $DEPLOY_PROJECT
+
+for b in user-files documents tenant-migrations; do
+  gcloud storage rm -r gs://ensemble-workflows-$b
+done
+
+gcloud iam service-accounts delete \
+  workflows-workloads@$DEPLOY_PROJECT.iam.gserviceaccount.com --project=$DEPLOY_PROJECT
+
+gcloud artifacts repositories delete workflows --location=$REGION --project=$IMAGE_PROJECT
+```
+
+> KMS keys cannot be deleted, only **destroyed by version** and the key ring
+> stays. If you plan to rebuild into the same region, expect the existing
+> `workflows-keyring` to still be there.
+
+## Next
+
+→ [GCP-DEPLOYMENT-QUICK-GUIDE.md](./GCP-DEPLOYMENT-QUICK-GUIDE.md) to deploy the
+chart.
