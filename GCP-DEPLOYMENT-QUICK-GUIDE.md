@@ -50,8 +50,8 @@ right cluster.
 From the root of the repo:
 
 ```bash
-helm upgrade --install workflows infrastructure/helm/workflows \
-  -f infrastructure/helm/workflows/gke-test-values.yaml \
+helm upgrade --install workflows helm/workflows \
+  -f helm/workflows/gke-test-values.yaml \
   -n workflows
 ```
 
