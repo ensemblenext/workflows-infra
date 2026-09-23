@@ -144,6 +144,9 @@ web:
   #   AWS_COGNITO_USER_POOL_ID: ""
   #   AWS_COGNITO_CLIENT_ID: ""
   #   AWS_COGNITO_DOMAIN: ""
+  #   # false = branded reset mail from the platform instead of Cognito
+  #   # (needs RESEND_API_KEY or SENDGRID_API_KEY on the server)
+  #   AUTH_PROVIDER_EMAIL_ENABLED: "true"
 
 # =============================================================================
 # Worker Configuration
