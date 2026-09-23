@@ -93,6 +93,13 @@ web:
     minReplicas: 1
     maxReplicas: 6
 
+  # Environment variables for web (optional if provided via External Secrets)
+  # See references/web-variables.yaml for the full list
+  # config:
+  #   # false = branded reset mail from the platform instead of Firebase
+  #   # (needs RESEND_API_KEY or SENDGRID_API_KEY on the server)
+  #   AUTH_PROVIDER_EMAIL_ENABLED: "true"
+
 worker:
   replicaCount: 1
   resources:

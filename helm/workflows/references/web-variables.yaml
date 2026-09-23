@@ -21,6 +21,7 @@ environments:
   optional:
     - TEMPORAL_WORKFLOW_URL
     - SELF_HOSTING # Enable self-hosting mode: hides tenant/user switching and invite (default: false)
+    - AUTH_PROVIDER_EMAIL_ENABLED # Auth provider sends reset mail; false = branded mail from the platform, needs RESEND_API_KEY on the server (default: true)
     # Login Methods Configuration
     # Only email/password is enabled by default
     # Values: true, false
