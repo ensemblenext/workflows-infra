@@ -43,4 +43,3 @@ aws-cdk/.cdk.staging/
 aws-cdk/**/*.js
 aws-cdk/**/*.d.ts
 aws-cdk/**/*.tsbuildinfo
-config.bat
