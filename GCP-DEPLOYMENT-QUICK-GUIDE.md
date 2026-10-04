@@ -1,6 +1,6 @@
 # GCP Deployment Quick Guide
 
-How to deploy the platform to the GKE cluster. Four commands and a health check.
+How to deploy the platform to the GKE cluster. A handful of commands and a health check.
 
 You do **not** need to create any cloud resources, secrets, or service accounts —
 those already exist. If something here fails because a resource is missing, that
@@ -53,10 +53,23 @@ From the root of the repo:
 helm upgrade --install workflows helm/workflows \
   -f helm/workflows/gke-test-values.yaml \
   -n workflows
+
+kubectl rollout restart deployment -n workflows
 ```
 
-`upgrade --install` works for both the first deploy and every one after, so this
-is the only command you need.
+`upgrade --install` works for both the first deploy and every one after.
+
+The restart is **not optional when you are shipping a new build**. The images are
+pinned to `:latest`, a tag that moves: after a new build, Helm renders a pod spec
+identical to the one already running, Kubernetes sees nothing to change, and the
+pods keep serving the old image. `helm upgrade` still reports success and the pods
+stay `Running`, so nothing looks wrong. The restart is what pulls the new image
+(`pullPolicy: Always` only applies when a pod actually starts).
+
+On a first install it is redundant — it just replaces pods that started seconds
+ago — but it costs nothing, so run both every time rather than trying to remember
+which case you are in. The migration Job is a Helm hook, so it has already
+finished by the time `helm` returns and the restart cannot interrupt it.
 
 Watch it come up:
 
@@ -111,10 +124,11 @@ helm history workflows -n workflows          # find the revision to go back to
 helm rollback workflows <REVISION> -n workflows
 ```
 
-## Restarting without changing anything
+## Restarting on its own
 
-Occasionally you'll be asked to restart the pods — for example after someone
-updates a credential, since pods only read those at startup:
+Step 2 already restarts the pods. You need this on its own when something changed
+outside the chart — a credential, for instance, since pods only read those at
+startup:
 
 ```bash
 kubectl rollout restart deployment -n workflows
@@ -122,9 +136,9 @@ kubectl rollout restart deployment -n workflows
 
 ## Notes
 
-- Deploying a new build of the app usually means **nothing changes in this
-  guide** — the images are rebuilt and published elsewhere, and you re-run Step 2
-  to pick them up.
+- Deploying a new build of the app means **nothing changes in this guide** — the
+  images are rebuilt and published elsewhere, and you re-run Step 2, including its
+  restart, to pick them up.
 - `helm uninstall workflows -n workflows` removes the app. It leaves the
   namespace, the secrets, and all cloud resources in place, so a later Step 2
   brings it straight back.
