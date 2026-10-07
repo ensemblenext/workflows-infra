@@ -32,19 +32,28 @@ enable_task_queue = false
 # and SQS_CONSUMER_QUEUES have to be set explicitly. That output is the easiest way to
 # get them right.
 
-# Per-queue overrides. The defaults suit an evaluation case, which invokes an agent and
-# then has a model judge the answer, so it is allowed 600s. Override to add a queue or
-# to change one's timing:
+# Queues to create, keyed by logical name. Each becomes
+# <project_name>-<environment>-<key>, so these produce:
 #
-# task_queues = {
-#   "evaluation-cases"  = {}
+#   workflows-dev-evaluation-cases   + -dlq   <- one task per evaluation test case
+#   workflows-dev-webhook-processor  + -dlq   <- inbound channel webhooks
+#
+# These two are the names the application enqueues to. Listed explicitly even though
+# they match the module defaults, so the queues an environment gets are visible here.
+#
+# The per-queue defaults suit an evaluation case, which invokes an agent and then has a
+# model judge the answer, so it is allowed 600s. Add an entry for another queue, or
+# override one's timing:
+#
 #   "webhook-processor" = { visibility_timeout_seconds = 90, max_receive_count = 5 }
-#   "export-jobs"       = {}
-# }
 #
-# Note that the consumer sets the visibility timeout per receive from its own
-# SQS_HANDLER_TIMEOUT_SECONDS, which is per process rather than per queue. A lower
+# Note the consumer sets the visibility timeout per receive from its own
+# SQS_HANDLER_TIMEOUT_SECONDS, which is per process rather than per queue, so a lower
 # value here only takes effect for a consumer configured to match it.
+task_queues = {
+  "evaluation-cases"  = {}
+  "webhook-processor" = {}
+}
 
 # EventBridge Scheduler callback delivery
 scheduler_api_destination_endpoint = "https://workflows-dev.example.com/api/scheduler/callback"
