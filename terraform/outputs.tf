@@ -188,3 +188,38 @@ output "ecr_registry_id" {
   description = "ECR registry ID"
   value       = var.enable_ecr ? module.ecr[0].registry_id : null
 }
+
+# ============================================
+# SQS Task Queue Outputs
+# ============================================
+output "task_queue_url_prefix" {
+  description = "SQS_QUEUE_URL_PREFIX for the server and worker"
+  value       = var.enable_task_queue ? module.sqs[0].queue_url_prefix : null
+}
+
+output "task_queue_names" {
+  description = "Task queue names, keyed by logical name"
+  value       = var.enable_task_queue ? module.sqs[0].queue_names : {}
+}
+
+output "task_queue_arns" {
+  description = "Task queue ARNs"
+  value       = var.enable_task_queue ? module.sqs[0].queue_arns : []
+}
+
+output "task_queue_dlq_arns" {
+  description = "Dead-letter queue ARNs; a task that exhausts its attempts lands here"
+  value       = var.enable_task_queue ? module.sqs[0].dlq_arns : []
+}
+
+output "task_queue_env" {
+  description = "Queue-related environment values for the services. Queue names are prefixed per environment, so the application defaults do not match and must be set explicitly."
+  value = var.enable_task_queue ? merge(
+    module.sqs[0].queue_env_values,
+    {
+      SQS_QUEUE_URL_PREFIX = module.sqs[0].queue_url_prefix
+      TASK_QUEUE_ENABLED   = "true"
+      TASK_QUEUE_PROVIDER  = "sqs"
+    }
+  ) : {}
+}

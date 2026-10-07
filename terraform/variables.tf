@@ -79,6 +79,33 @@ variable "enable_scheduler" {
   default     = true
 }
 
+# Background task queue (TASK_QUEUE_PROVIDER=sqs)
+variable "enable_task_queue" {
+  description = <<-EOT
+    Create the SQS task queues and grant the workloads role access to them.
+
+    Defaults to false: the queues cost nothing while idle, but an environment that
+    sets TASK_QUEUE_ENABLED=true without them fails every evaluation run rather than
+    falling back to in-process execution. Create the queues first, then enable the
+    queue on the services.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "task_queues" {
+  description = <<-EOT
+    Task queues to create, keyed by logical name and created as
+    "<project>-<environment>-<key>". Override only to change a queue's timing or to
+    add a queue; see modules/sqs for the per-queue settings and their defaults.
+  EOT
+  type        = any
+  default = {
+    "evaluation-cases"  = {}
+    "webhook-processor" = {}
+  }
+}
+
 # EventBridge Scheduler callback delivery
 variable "scheduler_api_destination_endpoint" {
   description = "HTTPS API endpoint invoked when scheduled events fire. Leave empty to create only the schedule group/event bus."

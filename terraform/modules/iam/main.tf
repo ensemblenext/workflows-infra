@@ -70,6 +70,18 @@ variable "enable_cognito" {
   default     = true
 }
 
+variable "enable_task_queue" {
+  description = "Enable SQS task queue permissions"
+  type        = bool
+  default     = false
+}
+
+variable "task_queue_arns" {
+  description = "ARNs of the SQS task queues the workloads may use"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
@@ -358,6 +370,44 @@ resource "aws_iam_role_policy" "workloads_bedrock" {
           "bedrock:GetFoundationModel"
         ]
         Resource = "*"
+      }
+    ]
+  })
+}
+
+# SQS Task Queue Policy
+#
+# Server and worker share one Kubernetes service account, and therefore this one role,
+# so send and receive cannot be split between them here. Separating producer from
+# consumer would need a second service account and a second IRSA role.
+#
+# Scoped to the queue ARNs rather than "*": these are the only three calls the code
+# makes. The queue URL is built from SQS_QUEUE_URL_PREFIX rather than looked up, so
+# sqs:GetQueueUrl is not needed, and nothing reads queue attributes at runtime.
+resource "aws_iam_role_policy" "workloads_task_queue" {
+  count = var.enable_task_queue && length(var.task_queue_arns) > 0 ? 1 : 0
+  name  = "${var.name_prefix}-workloads-sqs-policy"
+  role  = aws_iam_role.workloads.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnqueueTasks"
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = var.task_queue_arns
+      },
+      {
+        Sid    = "ConsumeTasks"
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage"
+        ]
+        Resource = var.task_queue_arns
       }
     ]
   })

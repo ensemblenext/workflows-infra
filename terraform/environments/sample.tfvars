@@ -14,6 +14,14 @@ eks_service_account_name = "workflows-sa"
 enable_cognito   = true
 enable_scheduler = true
 
+# Background task queue (TASK_QUEUE_PROVIDER=sqs).
+# Creates evaluation-cases and webhook-processor, each with a dead-letter queue, and
+# grants the workloads role send/receive on them. Create the queues before setting
+# TASK_QUEUE_ENABLED=true on the services: with the queue enabled and nothing to
+# enqueue into, every evaluation run is marked failed rather than falling back.
+# After apply, `terraform output task_queue_env` prints the values the services need.
+enable_task_queue = false
+
 # EventBridge Scheduler callback delivery
 scheduler_api_destination_endpoint = "https://workflows-dev.example.com/api/scheduler/callback"
 

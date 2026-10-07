@@ -58,6 +58,19 @@ module "s3" {
 }
 
 # ============================================
+# SQS Task Queues
+# ============================================
+# Declared before iam, which needs the queue ARNs for the workloads policy.
+module "sqs" {
+  source = "./modules/sqs"
+  count  = var.enable_task_queue ? 1 : 0
+
+  name_prefix = local.name_prefix
+  queues      = var.task_queues
+  tags        = local.common_tags
+}
+
+# ============================================
 # IAM Roles
 # ============================================
 module "iam" {
@@ -77,8 +90,10 @@ module "iam" {
   cognito_user_pool_arn        = var.enable_cognito ? module.cognito[0].user_pool_arn : ""
   secrets_arn_prefix           = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${local.name_prefix}/*"
 
-  enable_scheduler = var.enable_scheduler
-  enable_cognito   = var.enable_cognito
+  enable_scheduler  = var.enable_scheduler
+  enable_cognito    = var.enable_cognito
+  enable_task_queue = var.enable_task_queue
+  task_queue_arns   = var.enable_task_queue ? module.sqs[0].queue_arns : []
 
   tags = local.common_tags
 }
