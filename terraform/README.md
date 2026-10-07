@@ -17,6 +17,13 @@ This Terraform configuration provisions supporting AWS resources for the Workflo
 ### Scheduler
 - **EventBridge Scheduler Group** - For cron jobs
 
+### Background Task Queue (Optional)
+Created when `enable_task_queue=true`. Backs `TASK_QUEUE_PROVIDER=sqs`, which is how
+evaluation test cases and inbound webhooks are processed out of band on AWS.
+- **SQS Queues** - One per entry in `task_queues`; by default `evaluation-cases` and `webhook-processor`
+- **SQS Dead-Letter Queues** - One per queue. Not optional: the consumer decides retry-or-delete per message, but the redrive policy is what stops a permanently failing task being redelivered forever
+- **IAM Policy (Workloads)** - `SendMessage`, `ReceiveMessage` and `DeleteMessage`, scoped to those queue ARNs
+
 ### Authentication (Optional)
 - **Cognito User Pool** - For user authentication
 - **Cognito User Pool Client** - Web/SPA client
@@ -198,6 +205,8 @@ The import script:
 | `eks_service_account_name` | K8s service account name | `workflows-sa` |
 | `enable_cognito` | Enable Cognito resources | `true` |
 | `enable_scheduler` | Enable Scheduler resources | `true` |
+| `enable_task_queue` | Enable SQS task queues and the matching IAM policy | `false` |
+| `task_queues` | Queues to create, keyed by logical name | `evaluation-cases`, `webhook-processor` |
 | `cognito_enable_scheduler_oauth` | Enable OAuth M2M client for scheduler | `false` |
 | `cognito_scheduler_api_identifier` | Resource server identifier for scheduler API | `""` |
 | `s3_force_destroy` | Allow destroying non-empty buckets | `false` |
@@ -274,6 +283,70 @@ terraform output cognito_scheduler_oauth_client_id
 terraform output -raw cognito_scheduler_oauth_client_secret
 ```
 
+## Background Task Queue
+
+Evaluation runs queue one task per test case, and inbound webhooks are processed out of
+band. On AWS that uses SQS, which only holds messages — the worker pod polls the queues
+and makes the HTTP call each message describes. (On GCP, Cloud Tasks performs the
+request itself and no consumer is needed.)
+
+### Enabling it
+
+```bash
+# environments/prod.tfvars
+enable_task_queue = true
+```
+
+```bash
+terraform apply -var-file=environments/prod.tfvars
+terraform output task_queue_env
+```
+
+**Create the queues before enabling the queue on the services.** With
+`TASK_QUEUE_ENABLED=true` and no queue to enqueue into, every evaluation run is marked
+failed rather than falling back to in-process execution.
+
+### Wiring the services
+
+`terraform output task_queue_env` prints what both services need:
+
+```
+EVALUATION_QUEUE_NAME = "workflows-prod-evaluation-cases"
+WEBHOOK_QUEUE_NAME    = "workflows-prod-webhook-processor"
+SQS_CONSUMER_QUEUES   = "workflows-prod-evaluation-cases,workflows-prod-webhook-processor"
+SQS_QUEUE_URL_PREFIX  = "https://sqs.us-west-2.amazonaws.com/<account-id>"
+TASK_QUEUE_ENABLED    = "true"
+TASK_QUEUE_PROVIDER   = "sqs"
+```
+
+Queues are named `<project>-<environment>-<queue>` so one account can hold several
+environments. That means the application's own defaults (`evaluation-cases`,
+`webhook-processor`) no longer match and the three name settings **must** be set
+explicitly — which is why that output exists.
+
+`SQS_CONSUMER_QUEUES` goes on the **worker** only; it is what starts the consumer.
+Without it the worker stays inert and nothing drains the queues. Do not list a queue
+that does not exist: the consumer polls each name independently and will log
+`SQS receive failed, backing off` every five seconds indefinitely.
+
+### Callback authentication
+
+The queue calls back into a route that can invoke an agent, so it is authenticated. The
+worker fetches a Cognito M2M token per delivery — a token obtained when the message was
+*queued* would often have expired before a delayed or redelivered message is consumed:
+
+| Variable | On |
+|----------|-----|
+| `TASK_CALLBACK_OAUTH_TOKEN_URL`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPE` | worker |
+| `TASK_CALLBACK_OAUTH_SCOPE` | server — **required**, or a bearer token is refused |
+| `CLOUD_PROVIDER=aws` | server — defaults to `gcp`, which checks tokens against Google |
+
+This is unlike EventBridge Scheduler, where AWS performs the request and therefore does
+the OAuth exchange itself, using the credentials stored in the EventBridge Connection.
+Leave `TASK_CALLBACK_SECRET` unset: the worker only falls back to the shared secret when
+all four OAuth variables are absent, so setting it alongside them just leaves a weaker
+second door.
+
 ## Environment-Specific Deployments
 
 ```bash
@@ -321,6 +394,11 @@ After deployment, the following outputs are available:
 | `cognito_user_pool_id` | Cognito User Pool ID |
 | `cognito_user_pool_client_id` | Cognito Client ID |
 | `cognito_scheduler_oauth_client_id` | OAuth Client ID for scheduler (when enabled) |
+| `task_queue_url_prefix` | `SQS_QUEUE_URL_PREFIX` for the services (when enabled) |
+| `task_queue_names` | Queue names, keyed by logical name |
+| `task_queue_arns` | Task queue ARNs |
+| `task_queue_dlq_arns` | Dead-letter queue ARNs |
+| `task_queue_env` | Every queue-related environment value at once |
 | `cognito_scheduler_oauth_client_secret` | OAuth Client Secret for scheduler (sensitive) |
 | `cognito_scheduler_oauth_token_endpoint` | OAuth Token Endpoint URL |
 | `cognito_scheduler_oauth_scope` | OAuth Scope for scheduler API |
@@ -412,7 +490,8 @@ terraform/
     ├── kms/             # KMS encryption key
     ├── s3/              # S3 buckets
     ├── scheduler/       # EventBridge Scheduler
-    └── secrets/         # Secrets Manager
+    ├── secrets/         # Secrets Manager
+    └── sqs/             # Background task queues + DLQs
 ```
 
 ## Security Notes
