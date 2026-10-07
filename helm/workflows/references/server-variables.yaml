@@ -57,6 +57,26 @@ environments:
     - REDIS_TLS # true, false (default: false)
     - REDIS_USERNAME # Redis 6+ ACL user; leave unset to auth as the default user
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
+    # Background task queue. Unset means tasks run in-process: they execute, but a
+    # restart loses anything in flight and nothing is retried. Setting
+    # TASK_QUEUE_ENABLED=true requires TASK_QUEUE_PROVIDER, and a provider that is
+    # named but not configured fails loudly at the first task rather than silently
+    # falling back.
+    - TASK_QUEUE_ENABLED # true, 1 to use a queue; anything else runs in-process
+    - TASK_QUEUE_PROVIDER # cloud-tasks | sqs | in-process
+    - SQS_QUEUE_URL_PREFIX # account queue URL without the queue name, e.g. https://sqs.<region>.amazonaws.com/<account-id>
+    - SQS_ENDPOINT_URL # local testing against ElasticMQ or LocalStack; unset in a real deployment
+    - WEBHOOK_QUEUE_NAME # default: webhook-processor
+    # Evaluations. Each test case is queued separately, so these bound one case, not a
+    # whole run.
+    - EVALUATION_QUEUE_NAME # default: evaluation-cases
+    - EVALUATION_CASE_TIMEOUT_SECONDS # default: 600
+    - EVALUATION_RUN_STALE_SECONDS # default: 4x the case timeout; after this an unfinished run is marked failed
+    # The queue calls back into this service to run one case, and that endpoint can
+    # invoke an agent, so it is authenticated. On GCP, Cloud Tasks presents an OIDC
+    # token and GCP_SERVICE_ACCOUNT above is the account it must come from -- it is
+    # required, not advisory: without it the token is refused.
+    - TASK_CALLBACK_OAUTH_SCOPE # AWS only: the scope the worker's Cognito token must carry
     # Vector Embedding
     - VECTOR_EMBEDDING_PROVIDER # openai, azure, bedrock (default: openai)
     - VECTOR_EMBEDDING_MODEL # default: text-embedding-3-small
@@ -103,5 +123,9 @@ secrets:
     - VECTOR_EMBEDDING_API_KEY # API key for OpenAI/Azure embeddings (falls back to OPENAI_API_KEY)
     # Redis
     - REDIS_PASSWORD # only if the Redis instance requires auth
+    # Task queue callback. Only used where the caller cannot present a token: the
+    # in-process provider, and local runs. Cloud Tasks uses OIDC and the worker's SQS
+    # consumer uses Cognito, neither of which needs this.
+    - TASK_CALLBACK_SECRET
   
   

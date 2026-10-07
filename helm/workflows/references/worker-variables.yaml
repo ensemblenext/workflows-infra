@@ -36,6 +36,28 @@ environments:
     - REDIS_TLS # true, false (default: false)
     - REDIS_USERNAME # Redis 6+ ACL user; leave unset to auth as the default user
     - DEFAULT_LLM_MODEL_FAMILY # default is haiku (haiku, sonnet, gpt, gpt-mini, gemini-pro, gemini-flash, kimi, glm)
+    # SQS consumer. Cloud Tasks delivers over HTTP by itself; SQS only holds messages,
+    # so on AWS this pod reads them and makes the call each one describes. It starts
+    # only when TASK_QUEUE_PROVIDER=sqs and both the prefix and the queue list are set,
+    # and stays inert otherwise.
+    - TASK_QUEUE_PROVIDER # cloud-tasks | sqs | in-process
+    - SQS_QUEUE_URL_PREFIX # account queue URL without the queue name
+    - SQS_CONSUMER_QUEUES # comma-separated queue names this pod should consume, e.g. evaluation-cases,webhook-processor
+    - SQS_CONSUMER_CONCURRENCY # default: 5, messages handled at once per queue
+    - SQS_HANDLER_TIMEOUT_SECONDS # default: 600; also sets the message visibility window
+    - SQS_ENDPOINT_URL # local testing against ElasticMQ or LocalStack; unset in a real deployment
+    # Evaluations. This pod runs the sweep that fails runs whose queued cases stopped
+    # arriving, so these decide how long an unfinished run is given before it is
+    # presumed abandoned.
+    - EVALUATION_CASE_TIMEOUT_SECONDS # default: 600
+    - EVALUATION_RUN_STALE_SECONDS # default: 4x the case timeout
+    # Token for the callback this pod makes when delivering a queued task. Obtained per
+    # delivery, because one fetched when the message was queued would often have expired
+    # by the time a delayed or redelivered message is consumed. Without these the
+    # consumer falls back to TASK_CALLBACK_SECRET.
+    - TASK_CALLBACK_OAUTH_TOKEN_URL # Cognito token endpoint
+    - TASK_CALLBACK_OAUTH_CLIENT_ID
+    - TASK_CALLBACK_OAUTH_SCOPE
 
 secrets:
   required:
@@ -74,4 +96,7 @@ secrets:
     - SENDGRID_API_KEY
     # Redis
     - REDIS_PASSWORD # only if the Redis instance requires auth
+    # Task queue callback
+    - TASK_CALLBACK_OAUTH_CLIENT_SECRET # client credentials for the token above
+    - TASK_CALLBACK_SECRET # fallback when the OAuth variables are not set
 
