@@ -140,21 +140,21 @@ module "scheduler" {
   api_destination_oauth_http_parameters = (
     var.scheduler_api_destination_auth_type == "OAUTH_CLIENT_CREDENTIALS" && var.cognito_enable_scheduler_oauth && var.enable_cognito
     ? {
-        body = [
-          {
-            key             = "grant_type"
-            value           = "client_credentials"
-            is_value_secret = false
-          },
-          {
-            key             = "scope"
-            value           = module.cognito[0].scheduler_oauth_scope
-            is_value_secret = false
-          }
-        ]
-        header       = []
-        query_string = []
-      }
+      body = [
+        {
+          key             = "grant_type"
+          value           = "client_credentials"
+          is_value_secret = false
+        },
+        {
+          key             = "scope"
+          value           = module.cognito[0].scheduler_oauth_scope
+          is_value_secret = false
+        }
+      ]
+      header       = []
+      query_string = []
+    }
     : var.scheduler_api_destination_oauth_http_parameters
   )
 
@@ -173,9 +173,14 @@ module "cognito" {
   logout_urls              = var.cognito_logout_urls
   enable_scheduler_oauth   = var.cognito_enable_scheduler_oauth
   scheduler_api_identifier = var.cognito_scheduler_api_identifier
-  google_client_id         = var.cognito_google_client_id
-  google_client_secret     = var.cognito_google_client_secret
-  tags                     = local.common_tags
+
+  # The SQS consumer authenticates its callback with a Cognito M2M token, so the
+  # client is only wanted where the queue is actually used.
+  enable_task_callback_oauth = var.enable_task_queue && var.cognito_enable_task_callback_oauth
+  task_api_identifier        = var.cognito_task_api_identifier
+  google_client_id           = var.cognito_google_client_id
+  google_client_secret       = var.cognito_google_client_secret
+  tags                       = local.common_tags
 }
 
 # ============================================

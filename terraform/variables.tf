@@ -93,6 +93,31 @@ variable "enable_task_queue" {
   default     = false
 }
 
+variable "cognito_enable_task_callback_oauth" {
+  description = <<-EOT
+    Create the Cognito M2M client the SQS consumer uses to authenticate its callback
+    into the server. Requires enable_task_queue and enable_cognito.
+
+    Without it the four TASK_CALLBACK_OAUTH_* settings have nothing to point at, so
+    the worker falls back to TASK_CALLBACK_SECRET -- or presents no credential at all,
+    the server refuses the callback, and every message retries to the dead-letter
+    queue.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cognito_task_api_identifier" {
+  description = <<-EOT
+    Resource server identifier for the internal task callback API
+    (e.g. https://tasks.example.com). Must differ from
+    cognito_scheduler_api_identifier: Cognito requires resource server identifiers to
+    be unique within a user pool.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "task_queues" {
   description = <<-EOT
     Task queues to create, keyed by logical name and created as

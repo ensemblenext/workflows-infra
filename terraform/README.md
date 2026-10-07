@@ -23,6 +23,7 @@ evaluation test cases and inbound webhooks are processed out of band on AWS.
 - **SQS Queues** - One per entry in `task_queues`; by default `evaluation-cases` and `webhook-processor`
 - **SQS Dead-Letter Queues** - One per queue. Not optional: the consumer decides retry-or-delete per message, but the redrive policy is what stops a permanently failing task being redelivered forever
 - **IAM Policy (Workloads)** - `SendMessage`, `ReceiveMessage` and `DeleteMessage`, scoped to those queue ARNs
+- **Cognito Resource Server + M2M Client** - The identity the consumer uses to authenticate its callback into the server, when `cognito_enable_task_callback_oauth=true`
 
 ### Authentication (Optional)
 - **Cognito User Pool** - For user authentication
@@ -207,6 +208,8 @@ The import script:
 | `enable_scheduler` | Enable Scheduler resources | `true` |
 | `enable_task_queue` | Enable SQS task queues and the matching IAM policy | `false` |
 | `task_queues` | Queues to create, keyed by logical name | `evaluation-cases`, `webhook-processor` |
+| `cognito_enable_task_callback_oauth` | Create the M2M client the SQS consumer authenticates with | `false` |
+| `cognito_task_api_identifier` | Resource server identifier for the task callback API | `""` |
 | `cognito_enable_scheduler_oauth` | Enable OAuth M2M client for scheduler | `false` |
 | `cognito_scheduler_api_identifier` | Resource server identifier for scheduler API | `""` |
 | `s3_force_destroy` | Allow destroying non-empty buckets | `false` |
@@ -331,21 +334,72 @@ that does not exist: the consumer polls each name independently and will log
 
 ### Callback authentication
 
-The queue calls back into a route that can invoke an agent, so it is authenticated. The
-worker fetches a Cognito M2M token per delivery — a token obtained when the message was
-*queued* would often have expired before a delayed or redelivered message is consumed:
+Cognito secures exactly one hop — the worker calling back into the server:
+
+```
+  server ──SendMessage──▶  SQS queue                      (IRSA)
+                              │
+  worker ──ReceiveMessage──◀──┘                           (IRSA)
+     │
+     ├─ POST /oauth2/token  grant_type=client_credentials  (Cognito M2M)
+     │    scope=<task_api_identifier>/tasks.callback
+     │         └──▶ access token
+     │
+     └─ POST $SERVER_URL/api/evaluations/internal/run-case
+            Authorization: Bearer <token>
+                   │
+                   ▼
+            server verifies signature (JWKS), issuer,
+            token_use=access and the scope, runs the case, 200
+                   │
+  worker ──DeleteMessage──▶ SQS                           (IRSA)
+```
+
+IRSA covers the pod→SQS calls, but not the HTTP hop: that is an ordinary request to our
+own API, with AWS nowhere in the path to vouch for it — and the endpoint can invoke an
+agent, so it cannot be open. The token is fetched **per delivery**, because one obtained
+when the message was queued would often have expired before a delayed or redelivered
+message is consumed.
+
+This is unlike EventBridge Scheduler, where AWS performs the request and therefore does
+the OAuth exchange itself from the credentials stored in its Connection — which is why
+none of the `TASK_CALLBACK_*` variables apply there.
+
+Enable the client alongside the queues:
+
+```bash
+# environments/prod.tfvars
+enable_task_queue                 = true
+cognito_enable_task_callback_oauth = true
+cognito_task_api_identifier        = "https://tasks.example.com"
+```
+
+The identifier must differ from `cognito_scheduler_api_identifier` — Cognito requires
+resource server identifiers to be unique within a pool, and a precondition checks this
+at plan time rather than letting Cognito fail at apply.
+
+Then:
+
+```bash
+terraform output task_callback_oauth                  # worker settings + the scope
+terraform output -raw task_callback_oauth_client_secret
+```
 
 | Variable | On |
 |----------|-----|
-| `TASK_CALLBACK_OAUTH_TOKEN_URL`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPE` | worker |
-| `TASK_CALLBACK_OAUTH_SCOPE` | server — **required**, or a bearer token is refused |
+| `TASK_CALLBACK_OAUTH_TOKEN_URL`, `_CLIENT_ID`, `_CLIENT_SECRET` | worker |
+| `TASK_CALLBACK_OAUTH_SCOPE` | **both** — the worker requests it, the server requires it |
 | `CLOUD_PROVIDER=aws` | server — defaults to `gcp`, which checks tokens against Google |
 
-This is unlike EventBridge Scheduler, where AWS performs the request and therefore does
-the OAuth exchange itself, using the credentials stored in the EventBridge Connection.
-Leave `TASK_CALLBACK_SECRET` unset: the worker only falls back to the shared secret when
+The scope being needed on both sides is why it is wired here: one value, one source, so
+the two cannot drift. A mismatch refuses every callback, and `TASK_CALLBACK_OAUTH_SCOPE`
+missing on the server is worse than wrong — the server answers 500 and refuses the token
+rather than accepting an unscoped one.
+
+Leave `TASK_CALLBACK_SECRET` unset. The worker only falls back to the shared secret when
 all four OAuth variables are absent, so setting it alongside them just leaves a weaker
-second door.
+second door into that endpoint. The client secret belongs in Secrets Manager, not in
+`values.yaml`.
 
 ## Environment-Specific Deployments
 
@@ -399,6 +453,8 @@ After deployment, the following outputs are available:
 | `task_queue_arns` | Task queue ARNs |
 | `task_queue_dlq_arns` | Dead-letter queue ARNs |
 | `task_queue_env` | Every queue-related environment value at once |
+| `task_callback_oauth` | `TASK_CALLBACK_OAUTH_*` for the worker, plus the shared scope |
+| `task_callback_oauth_client_secret` | Client secret for the above (sensitive) |
 | `cognito_scheduler_oauth_client_secret` | OAuth Client Secret for scheduler (sensitive) |
 | `cognito_scheduler_oauth_token_endpoint` | OAuth Token Endpoint URL |
 | `cognito_scheduler_oauth_scope` | OAuth Scope for scheduler API |

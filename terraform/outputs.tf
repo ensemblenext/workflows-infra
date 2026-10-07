@@ -148,24 +148,24 @@ output "app_secrets_name" {
 output "helm_config_values" {
   description = "Environment variables for Helm chart"
   value = {
-    CLOUD_PROVIDER                       = "aws"
-    AUTH_PROVIDER                        = var.enable_cognito ? "cognito" : "firebase"
-    SERVERLESS_ENVIRONMENT               = "false"
-    STORAGE_USER_FILES_BUCKET            = module.s3.user_files_bucket_name
-    STORAGE_DOCUMENTS_BUCKET             = module.s3.documents_bucket_name
-    STORAGE_TENANT_MIGRATIONS_BUCKET     = module.s3.tenant_migrations_bucket_name
-    SCHEDULER_SERVICE_URL                = var.scheduler_api_destination_endpoint
-    KMS_KEY_ARN                          = module.kms.key_arn
-    AWS_REGION                           = data.aws_region.current.name
-    AWS_SCHEDULER_ROLE_ARN               = module.iam.scheduler_role_arn
-    AWS_SCHEDULER_GROUP_NAME             = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
-    AWS_SCHEDULER_TARGET_ARN             = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
-    AWS_SCHEDULER_EVENT_BUS_NAME         = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
-    AWS_SCHEDULER_EVENT_SOURCE           = var.enable_scheduler ? module.scheduler[0].scheduler_event_source : ""
-    AWS_SCHEDULER_EVENT_DETAIL_TYPE      = var.enable_scheduler ? module.scheduler[0].scheduler_event_detail_type : ""
-    AWS_SCHEDULER_API_DESTINATION_ARN    = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
-    AWS_COGNITO_USER_POOL_ID             = var.enable_cognito ? module.cognito[0].user_pool_id : ""
-    AWS_COGNITO_REGION                   = data.aws_region.current.name
+    CLOUD_PROVIDER                    = "aws"
+    AUTH_PROVIDER                     = var.enable_cognito ? "cognito" : "firebase"
+    SERVERLESS_ENVIRONMENT            = "false"
+    STORAGE_USER_FILES_BUCKET         = module.s3.user_files_bucket_name
+    STORAGE_DOCUMENTS_BUCKET          = module.s3.documents_bucket_name
+    STORAGE_TENANT_MIGRATIONS_BUCKET  = module.s3.tenant_migrations_bucket_name
+    SCHEDULER_SERVICE_URL             = var.scheduler_api_destination_endpoint
+    KMS_KEY_ARN                       = module.kms.key_arn
+    AWS_REGION                        = data.aws_region.current.name
+    AWS_SCHEDULER_ROLE_ARN            = module.iam.scheduler_role_arn
+    AWS_SCHEDULER_GROUP_NAME          = var.enable_scheduler ? module.scheduler[0].scheduler_group_name : ""
+    AWS_SCHEDULER_TARGET_ARN          = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_arn : ""
+    AWS_SCHEDULER_EVENT_BUS_NAME      = var.enable_scheduler ? module.scheduler[0].scheduler_event_bus_name : ""
+    AWS_SCHEDULER_EVENT_SOURCE        = var.enable_scheduler ? module.scheduler[0].scheduler_event_source : ""
+    AWS_SCHEDULER_EVENT_DETAIL_TYPE   = var.enable_scheduler ? module.scheduler[0].scheduler_event_detail_type : ""
+    AWS_SCHEDULER_API_DESTINATION_ARN = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
+    AWS_COGNITO_USER_POOL_ID          = var.enable_cognito ? module.cognito[0].user_pool_id : ""
+    AWS_COGNITO_REGION                = data.aws_region.current.name
   }
 }
 
@@ -210,6 +210,28 @@ output "task_queue_arns" {
 output "task_queue_dlq_arns" {
   description = "Dead-letter queue ARNs; a task that exhausts its attempts lands here"
   value       = var.enable_task_queue ? module.sqs[0].dlq_arns : []
+}
+
+output "task_callback_oauth" {
+  description = <<-EOT
+    TASK_CALLBACK_OAUTH_* values for the worker, plus the scope the server also needs.
+    Empty unless cognito_enable_task_callback_oauth is set.
+
+    The scope appears on both services on purpose: the worker requests it and the
+    server requires it, so a mismatch refuses every callback. One source for both is
+    the reason this is wired here rather than set by hand.
+  EOT
+  value = var.enable_task_queue && var.cognito_enable_task_callback_oauth && var.enable_cognito ? {
+    TASK_CALLBACK_OAUTH_TOKEN_URL = module.cognito[0].task_callback_oauth_token_endpoint
+    TASK_CALLBACK_OAUTH_CLIENT_ID = module.cognito[0].task_callback_oauth_client_id
+    TASK_CALLBACK_OAUTH_SCOPE     = module.cognito[0].task_callback_oauth_scope
+  } : {}
+}
+
+output "task_callback_oauth_client_secret" {
+  description = "TASK_CALLBACK_OAUTH_CLIENT_SECRET for the worker; store it as a secret, not in values.yaml"
+  value       = var.enable_task_queue && var.cognito_enable_task_callback_oauth && var.enable_cognito ? module.cognito[0].task_callback_oauth_client_secret : ""
+  sensitive   = true
 }
 
 output "task_queue_env" {
