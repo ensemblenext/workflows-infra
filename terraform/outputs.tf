@@ -147,7 +147,7 @@ output "app_secrets_name" {
 # ============================================
 output "helm_config_values" {
   description = "Environment variables for Helm chart"
-  value = {
+  value = merge({
     CLOUD_PROVIDER                    = "aws"
     AUTH_PROVIDER                     = var.enable_cognito ? "cognito" : "firebase"
     SERVERLESS_ENVIRONMENT            = "false"
@@ -166,7 +166,25 @@ output "helm_config_values" {
     AWS_SCHEDULER_API_DESTINATION_ARN = var.enable_scheduler ? module.scheduler[0].scheduler_api_destination_arn : ""
     AWS_COGNITO_USER_POOL_ID          = var.enable_cognito ? module.cognito[0].user_pool_id : ""
     AWS_COGNITO_REGION                = data.aws_region.current.name
-  }
+    },
+    # Merged in rather than left to task_queue_env alone: this output is the documented
+    # way to populate the chart's config, so a queue setting that only appeared
+    # elsewhere would be missed by anyone following it.
+    # queue_env_values rather than indexing queue_names here: the module guards those
+    # lookups, so overriding task_queues without one of the default keys does not break
+    # the plan with an error about a missing map element.
+    var.enable_task_queue ? merge(module.sqs[0].queue_env_values, {
+      TASK_QUEUE_ENABLED   = "true"
+      TASK_QUEUE_PROVIDER  = "sqs"
+      SQS_QUEUE_URL_PREFIX = module.sqs[0].queue_url_prefix
+    }) : {},
+    var.enable_task_queue && var.cognito_enable_task_callback_oauth && var.enable_cognito ? {
+      TASK_CALLBACK_OAUTH_TOKEN_URL = module.cognito[0].task_callback_oauth_token_endpoint
+      TASK_CALLBACK_OAUTH_CLIENT_ID = module.cognito[0].task_callback_oauth_client_id
+      # Needed by BOTH services: the worker requests this scope, the server requires it.
+      TASK_CALLBACK_OAUTH_SCOPE = module.cognito[0].task_callback_oauth_scope
+    } : {},
+  )
 }
 
 output "service_account_annotation" {

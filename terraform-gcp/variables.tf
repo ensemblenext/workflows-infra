@@ -57,6 +57,32 @@ variable "enable_scheduler" {
   default     = false
 }
 
+variable "enable_task_queue" {
+  description = <<-EOT
+    Provision the Cloud Tasks queues for the background task queue
+    (TASK_QUEUE_PROVIDER=cloud-tasks).
+
+    Defaults to false. The queues cost nothing while idle, but an environment that sets
+    TASK_QUEUE_ENABLED=true without them fails every evaluation run rather than falling
+    back to in-process execution, so the order has to be queues first.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "task_queues" {
+  description = <<-EOT
+    Queues to create, keyed by logical name and created as "<prefix>-<key>". Override
+    only to change a queue's dispatch limits or to add a queue; see
+    modules/cloud-tasks for the per-queue settings and their defaults.
+  EOT
+  type        = any
+  default = {
+    "evaluation-cases"  = {}
+    "webhook-processor" = {}
+  }
+}
+
 variable "enable_apis" {
   description = "Enable the required Google APIs on the project via Terraform."
   type        = bool

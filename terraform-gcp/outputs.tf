@@ -57,10 +57,24 @@ output "helm_config_values" {
       KMS_ENVIRONMENT_KEY     = module.kms.key_names["environment"]
 
       FIREBASE_PROJECT_ID = var.project_id
+
+      # Required on GCP generally, and specifically the account the server requires a
+      # Cloud Tasks OIDC token to have come from -- it fails closed without this.
+      GCP_SERVICE_ACCOUNT = module.iam.workloads_sa_email
     },
     var.enable_scheduler ? {
       SCHEDULER_SERVICE_URL = var.scheduler_callback_url
     } : {},
+    # Merged in rather than left to task_queue_env alone: this output is the documented
+    # way to populate the chart's config, so a queue setting that only appeared
+    # elsewhere would be missed by anyone following it.
+    # queue_env_values rather than indexing queue_names here: the module guards those
+    # lookups, so overriding task_queues without one of the default keys does not break
+    # the plan with an error about a missing map element.
+    var.enable_task_queue ? merge(module.cloud_tasks[0].queue_env_values, {
+      TASK_QUEUE_ENABLED  = "true"
+      TASK_QUEUE_PROVIDER = "cloud-tasks"
+    }) : {},
   )
 }
 
@@ -69,4 +83,29 @@ output "service_account_annotation" {
   value = {
     "iam.gke.io/gcp-service-account" = module.iam.workloads_sa_email
   }
+}
+
+# ─── Cloud Tasks ─────────────────────────────────────────────────────────────
+
+output "task_queue_names" {
+  description = "Cloud Tasks queue names, keyed by logical name."
+  value       = var.enable_task_queue ? module.cloud_tasks[0].queue_names : {}
+}
+
+output "task_queue_env" {
+  description = <<-EOT
+    Queue-related environment values for the SERVER. Cloud Tasks delivers over HTTP by
+    itself, so the worker needs none of these -- unlike the SQS path, where the worker
+    runs the consumer.
+
+    Queue names are prefixed per environment, so the application's own defaults do not
+    match and must be set explicitly.
+  EOT
+  value = var.enable_task_queue ? merge(
+    module.cloud_tasks[0].queue_env_values,
+    {
+      TASK_QUEUE_ENABLED  = "true"
+      TASK_QUEUE_PROVIDER = "cloud-tasks"
+    }
+  ) : {}
 }

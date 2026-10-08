@@ -14,6 +14,7 @@ locals {
     var.enable_artifact_registry ? ["artifactregistry.googleapis.com"] : [],
     var.enable_firebase_auth ? ["identitytoolkit.googleapis.com", "firebase.googleapis.com"] : [],
     var.enable_scheduler ? ["cloudscheduler.googleapis.com"] : [],
+    var.enable_task_queue ? ["cloudtasks.googleapis.com"] : [],
   )
 }
 
@@ -108,6 +109,23 @@ module "scheduler" {
 
   name_prefix        = local.name_prefix
   callback_url       = var.scheduler_callback_url
+  workloads_sa_email = module.iam.workloads_sa_email
+
+  depends_on = [google_project_service.enabled]
+}
+
+# ─── Cloud Tasks: background task queues ─────────────────────────────────────
+# The GCP counterpart to the AWS stack's SQS queues. Cloud Tasks is push-based: it
+# performs the callback itself with an OIDC token it mints per dispatch, so there is no
+# consumer to deploy and the worker needs no queue configuration at all.
+module "cloud_tasks" {
+  source = "./modules/cloud-tasks"
+  count  = var.enable_task_queue ? 1 : 0
+
+  name_prefix        = local.name_prefix
+  project_id         = var.project_id
+  location           = var.region
+  queues             = var.task_queues
   workloads_sa_email = module.iam.workloads_sa_email
 
   depends_on = [google_project_service.enabled]

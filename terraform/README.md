@@ -302,6 +302,11 @@ enable_task_queue = true
 
 ```bash
 terraform apply -var-file=environments/prod.tfvars
+
+# Everything non-secret for the chart config, queue settings included:
+terraform output -json helm_config_values
+
+# Or just the queue-specific subset:
 terraform output task_queue_env
 ```
 
@@ -311,7 +316,8 @@ failed rather than falling back to in-process execution.
 
 ### Wiring the services
 
-`terraform output task_queue_env` prints what both services need:
+`helm_config_values` carries these once the queue is enabled; `task_queue_env` is the
+same settings on their own:
 
 ```
 EVALUATION_QUEUE_NAME = "workflows-prod-evaluation-cases"

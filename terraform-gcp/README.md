@@ -15,6 +15,7 @@ so the Helm chart consumes GCP config the same way it consumes AWS config.
 | `cognito` | `firebase-auth` | **Identity Platform** config + optional Google IdP |
 | `ecr` | `artifact-registry` | One Docker repo (server/web/worker/migration images) |
 | `scheduler` | `scheduler` | Cloud Scheduler invoker SA + grants (⚠️ needs app support) |
+| `sqs` | `cloud-tasks` | Cloud Tasks queues (**push**: no consumer, no DLQ) |
 
 ## Usage
 
@@ -51,6 +52,59 @@ Helm chart changes for GKE (vs the EKS values):
 - **ServiceAccount**: use the `service_account_annotation` above.
 - **Images**: set `global.imageRegistry` to the `artifact_registry_repo_url` output.
 
+## Background task queue
+
+Backs `TASK_QUEUE_PROVIDER=cloud-tasks`. Evaluation runs queue one task per test case,
+and inbound webhooks are processed out of band.
+
+```hcl
+# environments/prod.tfvars
+enable_task_queue = true
+```
+
+```bash
+terraform apply -var-file=environments/prod.tfvars
+
+# The queue settings are included in the chart config output when enabled:
+terraform output -json helm_config_values
+
+# Or just the queue-specific subset:
+terraform output task_queue_env
+```
+
+**Create the queues before enabling the queue on the services.** With
+`TASK_QUEUE_ENABLED=true` and no queue to enqueue into, every evaluation run is marked
+failed rather than falling back to in-process execution.
+
+### How this differs from the SQS stack
+
+Cloud Tasks is **push**-based: it performs the callback itself, with an OIDC token it
+mints per dispatch. SQS only holds messages, so the AWS stack needs the worker to poll
+them and make the call. Three consequences:
+
+- **The worker needs no queue configuration at all.** `task_queue_env` is for the
+  server only. There is no `SQS_CONSUMER_QUEUES` equivalent, and nothing to size.
+- **No dead-letter queues.** A task that exhausts `max_attempts` is dropped. The run's
+  staleness sweep, which runs in the worker, is what settles a run whose cases stopped
+  arriving.
+- **No Cognito equivalent.** Cloud Tasks presents a Google OIDC token, and the server
+  verifies that it came from `GCP_SERVICE_ACCOUNT` — so there is no M2M client to
+  provision, and no shared scope to keep in step across two services.
+
+Concurrency is a property of the queue here, not of a consumer process:
+`max_concurrent_dispatches` defaults to 2. That is the only limit on how many cases
+call the model provider at once, and each case makes at least two calls (the agent,
+then a judge), so raise it deliberately.
+
+### Permissions
+
+The module grants the workloads SA `roles/cloudtasks.enqueuer` on each queue, and
+`roles/iam.serviceAccountUser` on itself. The second one is easy to miss: naming a
+service account as an OIDC token's identity is an impersonation, so the principal
+creating the task needs `iam.serviceAccounts.actAs` on it. Here the creator and the
+identity are the same account, and a service account does not hold `actAs` on itself
+implicitly.
+
 ## Manual / follow-up steps
 
 1. **Enable Identity Platform** once in the console (Console → Identity Platform →
@@ -67,6 +121,9 @@ Helm chart changes for GKE (vs the EKS values):
    has a Cloud Scheduler implementation (the current one is EventBridge-only).
 5. **Secret values**: the `app-secrets` secret is seeded with empty placeholders;
    write real values out-of-band (console/CI). Terraform ignores changes to them.
+6. **Cloud Tasks API**: enabled automatically with `enable_task_queue` while
+   `enable_apis = true`. If you manage API enablement yourself, turn on
+   `cloudtasks.googleapis.com` before applying, or queue creation fails.
 
 ## Notes
 
