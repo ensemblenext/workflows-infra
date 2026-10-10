@@ -43,3 +43,16 @@ aws-cdk/.cdk.staging/
 aws-cdk/**/*.js
 aws-cdk/**/*.d.ts
 aws-cdk/**/*.tsbuildinfo
+
+# A local clone of temporalio/helm-charts, kept for reference.
+#
+# Ignored rather than tracked. Committing the directory recorded it as a gitlink
+# (mode 160000) while this repo has no .gitmodules to supply its url, so
+# `git submodule update --init --recursive` in the parent repo failed with
+# "No url found for submodule path 'infrastructure/temporalio'" and exit 128.
+# That broke the AWS CodeBuild INSTALL phase outright, before any of the build ran.
+#
+# If this ever needs to be tracked, it has to be a real submodule
+# (`git submodule add`, which writes the .gitmodules entry) and not a committed
+# clone. Nothing in this repo or in the parent build references it today.
+temporalio/
